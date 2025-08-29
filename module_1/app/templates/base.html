@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Wei Liu - Senior Data Scientist{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Navigation Bar - positioned in top right corner -->
+    <nav class="navbar">
+        <ul class="nav-links">
+            <li><a href="{{ url_for('main.index') }}" class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}">Home</a></li>
+            <li><a href="{{ url_for('main.contact') }}" class="nav-link {% if request.endpoint == 'main.contact' %}active{% endif %}">Contact</a></li>
+            <li><a href="{{ url_for('main.projects') }}" class="nav-link {% if request.endpoint == 'main.projects' %}active{% endif %}">Projects</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main content area -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2025 Wei Liu. All rights reserved.</p>
+    </footer>
+</body>
+</html>

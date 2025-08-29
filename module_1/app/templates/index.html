@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Wei Liu - Home{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="container">
+        <div class="profile-layout">
+            <!-- Bio section on the left -->
+            <div class="bio-section">
+                <h1 class="name">Wei Liu</h1>
+                <h2 class="position">Senior Data Scientist</h2>
+                
+                <div class="bio-content">
+                    <p>Wei Liu is a Senior Data Scientist at Wolters Kluwer, specializing in advanced analytics within the Legal & Regulatory domain. He brings expertise in applying statistical modeling, machine learning, and data-driven insights to support innovation and decision-making in complex regulatory environments.</p>
+                    
+                    <p>Wei holds a Bachelor of Science in Petroleum and Natural Gas Engineering and a Master's degree in Statistics from Penn State University.</p>
+                </div>
+            </div>
+            
+            <!-- Profile image on the right -->
+            <div class="image-section">
+                <img src="{{ url_for('static', filename='images/profile_pic.jpg') }}" alt="Wei Liu Profile Picture" class="profile-image">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="welcome-section">
+    <div class="container">
+        <h3>Welcome to My Professional Portfolio</h3>
+        <p>Explore my work in data science, statistical modeling, and machine learning applications in the legal and regulatory technology space.</p>
+    </div>
+</div>
+{% endblock %}
