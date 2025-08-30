@@ -17,7 +17,7 @@ def create_app():
     app = Flask(__name__)
     
     # Configure the application
-    # This is not needed for this assignment, but it's a Flask development best practice to always set a SECRET_KEY
+    # WL Note: This is not needed for this assignment, but it's a Flask development best practice to always set a SECRET_KEY
     # If needed later, replace this to load from environment variables
     app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'
     
