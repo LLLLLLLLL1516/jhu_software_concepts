@@ -35,7 +35,6 @@ class GradCafeScraper:
             rp.set_url(f"{self.base_url}/robots.txt")
             rp.read()
             
-            # Scraper programmatically checks permissions before crawling
             can_fetch = rp.can_fetch(self.user_agent, self.results_url)
             print(f"Robots.txt check: {'ALLOWED' if can_fetch else 'DISALLOWED'}")
             
@@ -106,49 +105,143 @@ class GradCafeScraper:
         
         return links
     
+    def _is_valid_field_content(self, text: str, label: str) -> bool:
+        """Validate that the extracted text is appropriate for the given field"""
+        if not text or len(text.strip()) == 0:
+            return False
+        
+        text = text.strip()
+        label_lower = label.lower()
+        
+        # Filter out common UI elements and navigation text
+        ui_elements = [
+            'timeline', 'received notification', 'what do you think', 'content made to',
+            'total reactions', 'see more', 'sign in', 'submit your results',
+            'application information', 'acceptance rate'
+        ]
+        
+        if any(ui_elem in text.lower() for ui_elem in ui_elements):
+            return False
+        
+        # Filter out other field labels that might be picked up
+        other_labels = [
+            'institution', 'program', 'degree type', 'decision', 'notification',
+            'undergrad gpa', 'gre general', 'gre verbal', 'gre quant', 'analytical writing',
+            'notes', 'degree\'s country of origin'
+        ]
+        
+        if text.lower() in [label.lower() for label in other_labels]:
+            return False
+        
+        # Field-specific validation
+        if 'gpa' in label_lower:
+            # GPA should contain numbers and be reasonable
+            return bool(re.search(r'\d', text)) and len(text) < 20
+        
+        elif 'gre' in label_lower:
+            # GRE scores should be numeric or "0"
+            return bool(re.match(r'^\d+(\.\d+)?$', text)) or text == '0'
+        
+        elif 'notes' in label_lower:
+            # Notes should be substantial text, not short labels
+            return len(text) > 5 and not text.lower().startswith(('gre', 'gpa'))
+        
+        elif 'notification' in label_lower:
+            # Notification should contain date/method info
+            return any(word in text.lower() for word in ['on', 'via', 'email', 'phone', 'website'])
+        
+        elif 'country' in label_lower:
+            # Country field should be International, American, or similar
+            return text.lower() in ['international', 'american', 'domestic', 'us']
+        
+        else:
+            # For other fields, basic validation
+            return len(text) < 200  # Reasonable length limit
+    
     def _parse_detail_page(self, html: str, url: str) -> Optional[Dict[str, Any]]:
-        """Parse a detail page by looking for labeled fields"""
+        """Parse a detail page by looking for labeled fields using robust DOM structure parsing"""
         soup = BeautifulSoup(html, "html.parser")
         
-        def value_after(label_regex: str) -> Optional[str]:
-            """Find a text node that matches the label, then read the next meaningful text"""
-            # Find a text node that exactly matches the label
-            lab = soup.find(string=re.compile(rf'^\s*{label_regex}\s*$', re.I))
-            if not lab:
-                return None
+        def extract_field_value(label_text: str) -> Optional[str]:
+            """Extract field value using robust DOM structure parsing"""
+            # Strategy 1: Look for dt/dd pattern (definition list structure)
+            dt_element = soup.find('dt', string=re.compile(rf'^\s*{label_text}\s*$', re.I))
+            if dt_element:
+                # Look for the corresponding dd element
+                dd_element = dt_element.find_next_sibling('dd')
+                if dd_element:
+                    text = dd_element.get_text(strip=True)
+                    if text and self._is_valid_field_content(text, label_text):
+                        return text
+                    elif text:  # Return even if validation fails, for debugging
+                        return text
             
-            # Try to find the next element with text
-            node = lab.parent if hasattr(lab, "parent") else None
-            cur = node.next_sibling if node else lab.next_element
+            # Strategy 2: Look for label followed by colon and value pattern
+            # This handles cases like "GRE General: 331" or "GRE Verbal: 165"
+            pattern = rf'{re.escape(label_text)}\s*:\s*([^\n\r]+)'
+            match = re.search(pattern, soup.get_text(), re.IGNORECASE)
+            if match:
+                value = match.group(1).strip()
+                if value and self._is_valid_field_content(value, label_text):
+                    return value
+                elif value:  # Return even if validation fails, for debugging
+                    return value
             
-            while cur:
-                if hasattr(cur, "get_text"):
-                    txt = cur.get_text(strip=True)
-                    if txt and txt != label_regex.strip():
-                        return txt
-                elif isinstance(cur, str):
-                    txt = cur.strip()
-                    if txt and txt != label_regex.strip():
-                        return txt
-                cur = getattr(cur, 'next_sibling', None) or getattr(cur, 'next_element', None)
+            # Strategy 3: Look for the label text and find nearby values
+            label_element = soup.find(string=re.compile(rf'^\s*{label_text}\s*$', re.I))
+            if label_element:
+                # Get the parent container of the label
+                label_parent = label_element.parent if hasattr(label_element, 'parent') else None
+                if label_parent:
+                    # Look for the next sibling element that contains the value
+                    current = label_parent.next_sibling
+                    attempts = 0
+                    max_attempts = 5  # Limit search to prevent going too far
+                    
+                    while current and attempts < max_attempts:
+                        if hasattr(current, 'get_text'):
+                            text = current.get_text(strip=True)
+                            if text and self._is_valid_field_content(text, label_text):
+                                return text
+                        elif isinstance(current, str):
+                            text = current.strip()
+                            if text and self._is_valid_field_content(text, label_text):
+                                return text
+                        
+                        current = current.next_sibling
+                        attempts += 1
+            
+            # Strategy 4: Look for text containing both label and value in same element
+            # This handles cases where label and value are in the same text node
+            all_text = soup.get_text()
+            lines = all_text.split('\n')
+            for line in lines:
+                if label_text.lower() in line.lower() and ':' in line:
+                    parts = line.split(':', 1)
+                    if len(parts) == 2:
+                        value = parts[1].strip()
+                        if value and self._is_valid_field_content(value, label_text):
+                            return value
+                        elif value:  # Return even if validation fails
+                            return value
             
             return None
         
         # Extract all the labeled fields from the detail page
         result = {
             "url": url,
-            "school": value_after(r"Institution"),
-            "program": value_after(r"Program"),
-            "degree": value_after(r"Degree Type"),
-            "country_of_origin": value_after(r"Degree's Country of Origin"),
-            "status": value_after(r"Decision"),
-            "date_added": value_after(r"Notification"),
-            "GPA": value_after(r"Undergrad GPA"),
-            "GRE": value_after(r"GRE General"),
-            "GRE V": value_after(r"GRE Verbal"),
-            "GRE Q": value_after(r"GRE Quant|GRE Q"),
-            "GRE AW": value_after(r"Analytical Writing|GRE AW"),
-            "comments": value_after(r"Notes"),
+            "school": extract_field_value("Institution"),
+            "program": extract_field_value("Program"),
+            "degree": extract_field_value("Degree Type"),
+            "country_of_origin": extract_field_value("Degree's Country of Origin"),
+            "status": extract_field_value("Decision"),
+            "date_added": extract_field_value("Notification"),
+            "GPA": extract_field_value("Undergrad GPA"),
+            "GRE": extract_field_value("GRE General"),
+            "GRE V": extract_field_value("GRE Verbal"),
+            "GRE Q": extract_field_value("GRE Quant"),
+            "GRE AW": extract_field_value("Analytical Writing"),
+            "comments": extract_field_value("Notes"),
         }
         
         # Parse notification date if present (e.g., "on 11/02/2025 via E-mail")
@@ -173,10 +266,6 @@ class GradCafeScraper:
             else:
                 result["Degree"] = result["degree"]
         
-        # Map status to expected format
-        if result.get("status"):
-            result["status"] = result["status"]
-        
         # Map other fields to expected names
         field_mapping = {
             "date_added": "date_added",
@@ -184,13 +273,14 @@ class GradCafeScraper:
             "GRE V": "GRE V",
             "GRE Q": "GRE Q", 
             "GRE AW": "GRE AW",
-            "comments": "comments"
+            "comments": "comments",
+            "country_of_origin": "US/International"  # Map to expected field name
         }
         
         # Clean up the result
         cleaned_result = {}
         for key, value in result.items():
-            if key in ["school", "country_of_origin", "notification_date"]:
+            if key in ["school", "notification_date"]:
                 continue  # Skip these internal fields
             
             mapped_key = field_mapping.get(key, key)
@@ -200,7 +290,7 @@ class GradCafeScraper:
                 cleaned_result[mapped_key] = None
         
         # Only return results that have meaningful data
-        if cleaned_result.get("program") or cleaned_result.get("school"):
+        if cleaned_result.get("program"):
             return cleaned_result
         else:
             return None
@@ -264,7 +354,7 @@ class GradCafeScraper:
         print(f"Target: {target_entries} entries")
         
         if max_pages is None:
-            max_pages = min(self._get_max_pages(), 500)  # Reasonable limit for testing
+            max_pages = min(self._get_max_pages(), 1000)
             print(f"Detected max pages: {max_pages}")
         
         all_results = []
@@ -354,8 +444,8 @@ def main():
     print("and save as robots_screenshot.jpg for assignment submission.")
     
     # Start with a small test to verify the approach works
-    print("Starting with a small test (2 pages, ~20-40 results)...")
-    test_results = scraper.scrape_data(target_entries=50, max_pages=2)
+    print("Starting with a small test (1 page, ~10-20 results)...")
+    test_results = scraper.scrape_data(target_entries=20, max_pages=1)
     
     if test_results:
         print(f"\nTest successful! Found {len(test_results)} results.")
