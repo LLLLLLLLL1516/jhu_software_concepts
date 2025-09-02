@@ -17,7 +17,7 @@ import urllib.robotparser
 class GradCafeScraper:
     """Web scraper for Grad Cafe admission results"""
     
-    def __init__(self, email: str = "academic.research@example.com"):
+    def __init__(self, email: str = "wliu125@jh.edu"):
         self.http = urllib3.PoolManager()
         self.base_url = "https://www.thegradcafe.com"
         self.results_url = "https://www.thegradcafe.com/survey/index.php"
@@ -35,6 +35,7 @@ class GradCafeScraper:
             rp.set_url(f"{self.base_url}/robots.txt")
             rp.read()
             
+            # Scraper programmatically checks permissions before crawling
             can_fetch = rp.can_fetch(self.user_agent, self.results_url)
             print(f"Robots.txt check: {'ALLOWED' if can_fetch else 'DISALLOWED'}")
             
