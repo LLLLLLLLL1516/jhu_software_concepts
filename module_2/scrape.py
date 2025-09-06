@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 """
-Web scraper for Grad Cafe data
-Scrapes graduate school admission results from thegradcafe.com
+List view scraper for Grad Cafe data
+Scrapes graduate school admission results from thegradcafe.com list view
+This approach is more efficient than scraping individual detail pages
 """
 
 import json
 import re
 import time
 import urllib3
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urlencode
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional, Any
 import urllib.robotparser
 
 
-class GradCafeScraper:
-    """Web scraper for Grad Cafe admission results"""
+class GradCafeListScraper:
+    """Web scraper for Grad Cafe admission results using list view"""
     
     def __init__(self, email: str = "wliu125@jh.edu"):
         self.http = urllib3.PoolManager()
@@ -89,272 +90,365 @@ class GradCafeScraper:
         
         return None
     
-    def _extract_detail_links(self, html: str) -> List[str]:
-        """Extract detail page links from a list page"""
-        soup = BeautifulSoup(html, "html.parser")
-        links = []
+    def _extract_semester(self, row_element) -> Optional[str]:
+        """Extract semester/year from badge elements (e.g., Fall 2026, Spring 2026)"""
+        # Look for semester badges (usually orange/colored badges)
+        badges = row_element.find_all(['span', 'div'], class_=re.compile(r'badge|label|tag', re.I))
         
-        # Look for links that go to /result/<id>
-        for a in soup.select('a[href^="/result/"]'):
-            href = a.get("href")
-            if not href:
-                continue
-            full_url = urljoin(self.base_url, href)
-            if full_url not in links:
-                links.append(full_url)
+        for badge in badges:
+            text = badge.get_text(strip=True)
+            # Match patterns like "Fall 2026", "Spring 2025", etc.
+            if re.match(r'^(Fall|Spring|Summer|Winter)\s+\d{4}$', text, re.I):
+                return text
         
-        return links
+        # Alternative: Look in text content
+        text_content = row_element.get_text()
+        semester_match = re.search(r'\b(Fall|Spring|Summer|Winter)\s+\d{4}\b', text_content, re.I)
+        if semester_match:
+            return semester_match.group(0)
+        
+        return None
     
-    def _is_valid_field_content(self, text: str, label: str) -> bool:
-        """Validate that the extracted text is appropriate for the given field"""
-        if not text or len(text.strip()) == 0:
-            return False
+    def _extract_status_info(self, row_element) -> Dict[str, Optional[str]]:
+        """Extract acceptance status and date"""
+        status_info = {
+            'status': None,
+            'status_date': None
+        }
         
-        text = text.strip()
-        label_lower = label.lower()
+        # Look for status text patterns
+        text = row_element.get_text()
         
-        # Filter out common UI elements and navigation text
-        ui_elements = [
-            'timeline', 'received notification', 'what do you think', 'content made to',
-            'total reactions', 'see more', 'sign in', 'submit your results',
-            'application information', 'acceptance rate'
-        ]
+        # Pattern: "Accepted on 1 Sep", "Rejected on 2 Sep", "Interview on 15 Mar", "Wait listed on 6 Feb"
+        # Handle both "Waitlisted" and "Wait listed" (with space)
+        status_pattern = r'(Accepted|Rejected|Interview|Wait\s*listed|Waitlisted)\s+on\s+(\d{1,2}\s+\w+)'
+        match = re.search(status_pattern, text, re.I)
         
-        if any(ui_elem in text.lower() for ui_elem in ui_elements):
-            return False
-        
-        # Filter out other field labels that might be picked up
-        other_labels = [
-            'institution', 'program', 'degree type', 'decision', 'notification',
-            'undergrad gpa', 'gre general', 'gre verbal', 'gre quant', 'analytical writing',
-            'notes', 'degree\'s country of origin'
-        ]
-        
-        if text.lower() in [label.lower() for label in other_labels]:
-            return False
-        
-        # Field-specific validation
-        if 'gpa' in label_lower:
-            # GPA should contain numbers and be reasonable
-            return bool(re.search(r'\d', text)) and len(text) < 20
-        
-        elif 'gre' in label_lower:
-            # GRE scores should be numeric or "0"
-            return bool(re.match(r'^\d+(\.\d+)?$', text)) or text == '0'
-        
-        elif 'notes' in label_lower:
-            # Notes should be substantial text, not short labels
-            return len(text) > 5 and not text.lower().startswith(('gre', 'gpa'))
-        
-        elif 'notification' in label_lower:
-            # Notification should contain date/method info
-            return any(word in text.lower() for word in ['on', 'via', 'email', 'phone', 'website'])
-        
-        elif 'country' in label_lower:
-            # Country field should be International, American, or similar
-            return text.lower() in ['international', 'american', 'domestic', 'us']
-        
+        if match:
+            # Normalize "Wait listed" to "Waitlisted" for consistency
+            status = match.group(1)
+            if 'wait' in status.lower():
+                status_info['status'] = 'Waitlisted'
+            else:
+                status_info['status'] = status.capitalize()
+            status_info['status_date'] = match.group(2)
         else:
-            # For other fields, basic validation
-            return len(text) < 200  # Reasonable length limit
-    
-    def _parse_detail_page(self, html: str, url: str) -> Optional[Dict[str, Any]]:
-        """Parse a detail page by looking for labeled fields using robust DOM structure parsing"""
-        soup = BeautifulSoup(html, "html.parser")
+            # Look for status in specific elements
+            for elem in row_element.find_all(['span', 'div', 'td']):
+                elem_text = elem.get_text(strip=True)
+
+                if re.match(r'^(Accepted|Rejected|Interview|Wait\s*listed|Waitlisted)$', elem_text, re.I):
+                    # Normalize "Wait listed" to "Waitlisted"
+                    if 'wait' in elem_text.lower():
+                        status_info['status'] = 'Waitlisted'
+                    else:
+                        status_info['status'] = elem_text.capitalize()
+                    break
         
-        def extract_field_value(label_text: str) -> Optional[str]:
-            """Extract field value using robust DOM structure parsing"""
-            # Strategy 1: Look for dt/dd pattern (definition list structure)
-            dt_element = soup.find('dt', string=re.compile(rf'^\s*{label_text}\s*$', re.I))
-            if dt_element:
-                # Look for the corresponding dd element
-                dd_element = dt_element.find_next_sibling('dd')
-                if dd_element:
-                    text = dd_element.get_text(strip=True)
-                    if text and self._is_valid_field_content(text, label_text):
-                        return text
-                    elif text:  # Return even if validation fails, for debugging
-                        return text
+        return status_info
+    
+    # def _extract_scores(self, row_element) -> Dict[str, Optional[str]]:
+    #     """Extract GPA and GRE scores from the row"""
+    #     scores = {
+    #         'gpa': None,
+    #         'gre_total': None,
+    #         'gre_verbal': None,
+    #         'gre_quant': None,
+    #         'gre_aw': None
+    #     }
+        
+    #     text = row_element.get_text()
+        
+    #     # Extract GPA (e.g., "GPA 3.22", "GPA: 3.90")
+    #     gpa_match = re.search(r'GPA\s*:?\s*(\d+\.\d+)', text, re.I)
+    #     if gpa_match:
+    #         scores['gpa'] = gpa_match.group(1)
+        
+    #     # Extract GRE Total (e.g., "GRE 331", "GRE: 320")
+    #     gre_total_match = re.search(r'GRE\s*:?\s*(\d{3})\b', text, re.I)
+    #     if gre_total_match:
+    #         scores['gre_total'] = gre_total_match.group(1)
+        
+    #     # Extract GRE Verbal (e.g., "GRE V 165", "V: 160")
+    #     gre_v_match = re.search(r'(?:GRE\s*)?V(?:erbal)?\s*:?\s*(\d{3})\b', text, re.I)
+    #     if gre_v_match:
+    #         scores['gre_verbal'] = gre_v_match.group(1)
+        
+    #     # Extract GRE Quant (e.g., "GRE Q 170", "Q: 165")
+    #     gre_q_match = re.search(r'(?:GRE\s*)?Q(?:uant)?\s*:?\s*(\d{3})\b', text, re.I)
+    #     if gre_q_match:
+    #         scores['gre_quant'] = gre_q_match.group(1)
+        
+    #     # Extract GRE AW (e.g., "GRE AW 4.5", "AW: 5.0")
+    #     gre_aw_match = re.search(r'(?:GRE\s*)?AW\s*:?\s*(\d+(?:\.\d+)?)\b', text, re.I)
+    #     if gre_aw_match:
+    #         scores['gre_aw'] = gre_aw_match.group(1)
+        
+    #     return scores
+    
+    def _parse_list_entry(self, main_row, detail_row=None, comment_row=None) -> Optional[Dict[str, Any]]:
+        """Parse a complete entry from the list view (main row + detail row + optional comment)"""
+        try:
+            result = {}
             
-            # Strategy 2: Look for label followed by colon and value pattern
-            # This handles cases like "GRE General: 331" or "GRE Verbal: 165"
-            pattern = rf'{re.escape(label_text)}\s*:\s*([^\n\r]+)'
-            match = re.search(pattern, soup.get_text(), re.IGNORECASE)
-            if match:
-                value = match.group(1).strip()
-                if value and self._is_valid_field_content(value, label_text):
-                    return value
-                elif value:  # Return even if validation fails, for debugging
-                    return value
+            # Parse main row
+            cells = main_row.find_all('td')
+            if len(cells) < 4:
+                return None
             
-            # Strategy 3: Look for the label text and find nearby values
-            label_element = soup.find(string=re.compile(rf'^\s*{label_text}\s*$', re.I))
-            if label_element:
-                # Get the parent container of the label
-                label_parent = label_element.parent if hasattr(label_element, 'parent') else None
-                if label_parent:
-                    # Look for the next sibling element that contains the value
-                    current = label_parent.next_sibling
-                    attempts = 0
-                    max_attempts = 5  # Limit search to prevent going too far
+            # Extract school (first column)
+            school_cell = cells[0]
+            result['school'] = school_cell.get_text(strip=True)
+            
+            # Extract major and degree (second column)
+            program_cell = cells[1]
+            program_div = program_cell.find('div', class_='tw-text-gray-900')
+            if program_div:
+                # Major and degree are separated by a bullet point
+                spans = program_div.find_all('span')
+                if spans:
+                    result['major'] = spans[0].get_text(strip=True)
+                    if len(spans) > 1:
+                        # The last span usually contains the degree
+                        degree_text = spans[-1].get_text(strip=True)
+                        result['degree'] = degree_text
+                    else:
+                        result['degree'] = None
+                else:
+                    result['major'] = None
+            else:
+                result['major'] = None
+            
+            # Create combined program field (major, school) for downstream compatibility
+            school = result.get('school', '').strip()
+            major = result.get('major', '').strip()
+            
+            if major and school:
+                result['program'] = f"{major}, {school}"
+            elif major:
+                result['program'] = major
+            elif school:
+                result['program'] = school
+            else:
+                result['program'] = None
+            
+            # Extract date added (third column on desktop, may be hidden on mobile)
+            if len(cells) > 2:
+                date_cell = cells[2]
+                result['date_added'] = date_cell.get_text(strip=True)
+            
+            # Extract status from fourth column (desktop) or from detail row badges
+            if len(cells) > 3:
+                status_cell = cells[3]
+                status_div = status_cell.find('div', class_=re.compile(r'tw-inline-flex.*tw-items-center'))
+                if status_div:
+                    status_text = status_div.get_text(strip=True)
+                    # Parse status like "Accepted on 1 Sep" or "Wait listed on 6 Feb"
+                    # Handle both "Waitlisted" and "Wait listed" (with space)
+                    status_match = re.match(r'(Accepted|Rejected|Interview|Wait\s*listed|Waitlisted)\s+on\s+(.+)', status_text, re.I)
+                    if status_match:
+                        # Normalize "Wait listed" to "Waitlisted" for consistency
+                        status = status_match.group(1)
+                        if 'wait' in status.lower():
+                            result['status'] = 'Waitlisted'
+                        else:
+                            result['status'] = status.capitalize()
+                        result['status_date'] = status_match.group(2)
+                    else:
+                        result['status'] = status_text
+                        result['status_date'] = None
+            
+            # Extract URL from the comment/options links
+            link = main_row.find('a', href=re.compile(r'/result/\d+'))
+            if link:
+                result['url'] = self.base_url + link.get('href')
+            
+            # Parse detail row if available
+            if detail_row:
+                # Extract badges from detail row
+                badges = detail_row.find_all('div', class_=re.compile(r'tw-inline-flex.*tw-items-center.*tw-rounded-md'))
+                
+                for badge in badges:
+                    badge_text = badge.get_text(strip=True)
                     
-                    while current and attempts < max_attempts:
-                        if hasattr(current, 'get_text'):
-                            text = current.get_text(strip=True)
-                            if text and self._is_valid_field_content(text, label_text):
-                                return text
-                        elif isinstance(current, str):
-                            text = current.strip()
-                            if text and self._is_valid_field_content(text, label_text):
-                                return text
+                    # Extract semester (Fall/Spring + Year)
+                    if re.match(r'^(Fall|Spring|Summer|Winter)\s+\d{4}$', badge_text, re.I):
+                        result['semester'] = badge_text
+                    
+                    # Extract applicant type
+                    elif badge_text.lower() in ['international', 'american', 'domestic', 'us']:
+                        result['applicant_type'] = badge_text.capitalize()
+                    
+                    # Extract GPA
+                    elif badge_text.startswith('GPA'):
+                        gpa_match = re.search(r'GPA\s*(\d+\.\d+)', badge_text)
+                        if gpa_match:
+                            result['gpa'] = gpa_match.group(1)
+                    
+                    # Extract GRE scores
+                    elif 'GRE' in badge_text:
+                        if badge_text.startswith('GRE V'):
+                            gre_v_match = re.search(r'GRE V\s*(\d+)', badge_text)
+                            if gre_v_match:
+                                result['gre_verbal'] = gre_v_match.group(1)
+                        elif badge_text.startswith('GRE Q'):
+                            gre_q_match = re.search(r'GRE Q\s*(\d+)', badge_text)
+                            if gre_q_match:
+                                result['gre_quant'] = gre_q_match.group(1)
+                        elif badge_text.startswith('GRE AW'):
+                            gre_aw_match = re.search(r'GRE AW\s*(\d+(?:\.\d+)?)', badge_text)
+                            if gre_aw_match:
+                                result['gre_aw'] = gre_aw_match.group(1)
+                        elif badge_text.startswith('GRE'):
+                            # This is likely the total GRE score
+                            gre_match = re.search(r'GRE\s*(\d+)', badge_text)
+                            if gre_match:
+                                result['gre_total'] = gre_match.group(1)
+            
+            # Parse comment row if available
+            if comment_row:
+                comment_p = comment_row.find('p', class_='tw-text-gray-500')
+                if comment_p:
+                    result['comments'] = comment_p.get_text(strip=True)
+            
+            # Set defaults for missing fields
+            if 'semester' not in result:
+                result['semester'] = None
+            if 'applicant_type' not in result:
+                result['applicant_type'] = None
+            if 'gpa' not in result:
+                result['gpa'] = None
+            if 'gre_total' not in result:
+                result['gre_total'] = None
+            if 'gre_verbal' not in result:
+                result['gre_verbal'] = None
+            if 'gre_quant' not in result:
+                result['gre_quant'] = None
+            if 'gre_aw' not in result:
+                result['gre_aw'] = None
+            if 'comments' not in result:
+                result['comments'] = None
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error parsing entry: {e}")
+            return None
+    
+    def _parse_list_page(self, html: str) -> List[Dict[str, Any]]:
+        """Parse a list page and extract all admission results"""
+        soup = BeautifulSoup(html, "html.parser")
+        results = []
+        
+        # Find the main results table
+        table = soup.find('table', class_='tw-min-w-full')
+        if not table:
+            # Try finding any table
+            tables = soup.find_all('table')
+            table = tables[0] if tables else None
+        
+        if not table:
+            print("No table found on page")
+            return results
+        
+        # Find the tbody
+        tbody = table.find('tbody')
+        if not tbody:
+            tbody = table  # Fallback to table itself
+        
+        # Get all rows
+        rows = tbody.find_all('tr')
+        
+        # Process rows - they come in groups (main row, detail row, optional comment row)
+        i = 0
+        while i < len(rows):
+            row = rows[i]
+            
+            # Skip if this is a header row
+            if row.find('th') and not row.find('td'):
+                i += 1
+                continue
+            
+            # Check if this is a main data row (has multiple td elements)
+            cells = row.find_all('td')
+            if len(cells) >= 4:  # Main row has at least 4 cells
+                main_row = row
+                detail_row = None
+                comment_row = None
+                
+                # Check if next row is a detail row (has badges)
+                if i + 1 < len(rows):
+                    next_row = rows[i + 1]
+                    # Detail rows typically have class "tw-border-none" and contain badges
+                    if 'tw-border-none' in next_row.get('class', []):
+                        detail_row = next_row
+                        i += 1
                         
-                        current = current.next_sibling
-                        attempts += 1
+                        # Check if there's a comment row after the detail row
+                        if i + 1 < len(rows):
+                            potential_comment = rows[i + 1]
+                            if 'tw-border-none' in potential_comment.get('class', []):
+                                # Check if it contains a comment paragraph
+                                if potential_comment.find('p', class_='tw-text-gray-500'):
+                                    comment_row = potential_comment
+                                    i += 1
+                
+                # Parse the complete entry
+                result = self._parse_list_entry(main_row, detail_row, comment_row)
+                if result and result.get('school'):
+                    results.append(result)
             
-            # Strategy 4: Look for text containing both label and value in same element
-            # This handles cases where label and value are in the same text node
-            all_text = soup.get_text()
-            lines = all_text.split('\n')
-            for line in lines:
-                if label_text.lower() in line.lower() and ':' in line:
-                    parts = line.split(':', 1)
-                    if len(parts) == 2:
-                        value = parts[1].strip()
-                        if value and self._is_valid_field_content(value, label_text):
-                            return value
-                        elif value:  # Return even if validation fails
-                            return value
-            
-            return None
+            i += 1
         
-        # Extract all the labeled fields from the detail page
-        result = {
-            "url": url,
-            "school": extract_field_value("Institution"),
-            "program": extract_field_value("Program"),
-            "degree": extract_field_value("Degree Type"),
-            "country_of_origin": extract_field_value("Degree's Country of Origin"),
-            "status": extract_field_value("Decision"),
-            "date_added": extract_field_value("Notification"),
-            "GPA": extract_field_value("Undergrad GPA"),
-            "GRE": extract_field_value("GRE General"),
-            "GRE V": extract_field_value("GRE Verbal"),
-            "GRE Q": extract_field_value("GRE Quant"),
-            "GRE AW": extract_field_value("Analytical Writing"),
-            "comments": extract_field_value("Notes"),
-        }
-        
-        # Parse notification date if present (e.g., "on 11/02/2025 via E-mail")
-        if result["date_added"]:
-            date_match = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', result["date_added"])
-            if date_match:
-                result["notification_date"] = date_match.group(1)
-        
-        # Create the combined program field as expected by LLM
-        if result.get("school") and result.get("program"):
-            result["program"] = f'{result["program"]}, {result["school"]}'
-        elif result.get("school") and not result.get("program"):
-            result["program"] = result["school"]
-        
-        # Map degree field to expected format
-        if result.get("degree"):
-            degree = result["degree"].lower()
-            if "phd" in degree or "ph.d" in degree or "doctorate" in degree:
-                result["Degree"] = "PhD"
-            elif "master" in degree or "ms" in degree or "ma" in degree:
-                result["Degree"] = "Masters"
-            else:
-                result["Degree"] = result["degree"]
-        
-        # Map other fields to expected names
-        field_mapping = {
-            "date_added": "date_added",
-            "GPA": "GPA", 
-            "GRE V": "GRE V",
-            "GRE Q": "GRE Q", 
-            "GRE AW": "GRE AW",
-            "comments": "comments",
-            "country_of_origin": "US/International"  # Map to expected field name
-        }
-        
-        # Clean up the result
-        cleaned_result = {}
-        for key, value in result.items():
-            if key in ["school", "notification_date"]:
-                continue  # Skip these internal fields
-            
-            mapped_key = field_mapping.get(key, key)
-            if value and str(value).strip():
-                cleaned_result[mapped_key] = str(value).strip()
-            else:
-                cleaned_result[mapped_key] = None
-        
-        # Only return results that have meaningful data
-        if cleaned_result.get("program"):
-            return cleaned_result
-        else:
-            return None
+        return results
     
-    def _scrape_page_links(self, page_num: int = 1) -> List[str]:
-        """Scrape detail page links from a single list page"""
-        params = {'page': str(page_num)} if page_num > 1 else {}
-        
-        html = self._make_request(self.results_url, params)
-        if not html:
-            return []
-        
-        links = self._extract_detail_links(html)
-        print(f"Found {len(links)} detail links on page {page_num}")
-        return links
-    
-    def _scrape_detail_page(self, detail_url: str) -> Optional[Dict[str, Any]]:
-        """Scrape a single detail page"""
-        html = self._make_request(detail_url)
-        if not html:
-            return None
-        
-        result = self._parse_detail_page(html, detail_url)
-        return result
-    
-    def _get_max_pages(self) -> int:
-        """Get the maximum number of pages from pagination"""
+    def _get_total_pages(self) -> int:
+        """Determine the total number of pages available"""
         try:
             html = self._make_request(self.results_url)
             if not html:
-                return 1000  # Default fallback
+                return 1
             
             soup = BeautifulSoup(html, 'html.parser')
             
-            # Look for pagination elements and extract the highest page number
-            pagination_text = soup.get_text()
-            page_numbers = re.findall(r'\b(\d{3,4})\b', pagination_text)
+            # Look for pagination elements
+            pagination = soup.find(['div', 'nav', 'ul'], class_=re.compile(r'paginat', re.I))
+            if pagination:
+                # Find all page numbers
+                page_links = pagination.find_all('a', string=re.compile(r'^\d+$'))
+                if page_links:
+                    page_numbers = [int(link.get_text()) for link in page_links]
+                    return max(page_numbers)
             
-            if page_numbers:
-                max_page = max(int(p) for p in page_numbers if int(p) < 10000)
-                return max_page
+            # Alternative: Look for "Page X of Y" text
+            page_text = soup.get_text()
+            match = re.search(r'Page\s+\d+\s+of\s+(\d+)', page_text, re.I)
+            if match:
+                return int(match.group(1))
             
-            return 1000  # Default fallback
+            # Default fallback
+            return 1000
             
         except Exception as e:
-            print(f"Could not determine max pages: {e}")
+            print(f"Could not determine total pages: {e}")
             return 1000
     
     def scrape_data(self, max_pages: int = None, target_entries: int = 30000) -> List[Dict[str, Any]]:
         """
-        Main scraping method to collect grad cafe data
+        Main scraping method to collect grad cafe data from list view
         
         Args:
-            max_pages: Maximum number of list pages to scrape (None for auto-detect)
+            max_pages: Maximum number of pages to scrape (None for auto-detect)
             target_entries: Target number of entries to collect
             
         Returns:
             List of scraped admission results
         """
-        print("Starting Grad Cafe scraping...")
+        print("Starting Grad Cafe list view scraping...")
         print(f"Target: {target_entries} entries")
         
         if max_pages is None:
-            max_pages = min(self._get_max_pages(), 1000)
+            max_pages = min(self._get_total_pages(), 1500)
             print(f"Detected max pages: {max_pages}")
         
         all_results = []
@@ -362,58 +456,53 @@ class GradCafeScraper:
         consecutive_empty_pages = 0
         
         while page <= max_pages and len(all_results) < target_entries:
-            print(f"Scraping list page {page}/{max_pages}...")
+            print(f"Scraping page {page}/{max_pages}...")
             
-            # Get detail page links from this list page
-            detail_links = self._scrape_page_links(page)
+            # Make request with page parameter
+            params = {'page': str(page)} if page > 1 else {}
+            html = self._make_request(self.results_url, params)
             
-            if not detail_links:
+            if not html:
                 consecutive_empty_pages += 1
                 if consecutive_empty_pages >= 5:
                     print("Too many consecutive empty pages, stopping.")
                     break
                 page += 1
                 continue
+            
+            # Parse the page
+            page_results = self._parse_list_page(html)
+            
+            if not page_results:
+                consecutive_empty_pages += 1
+                if consecutive_empty_pages >= 5:
+                    print("Too many consecutive empty pages, stopping.")
+                    break
             else:
                 consecutive_empty_pages = 0
+                all_results.extend(page_results)
+                print(f"  Found {len(page_results)} results on page {page}")
+                print(f"  Total entries collected: {len(all_results)}")
             
-            # Scrape each detail page
-            page_results = []
-            for i, detail_url in enumerate(detail_links):
-                if len(all_results) >= target_entries:
-                    break
-                
-                print(f"  Scraping detail page {i+1}/{len(detail_links)}: {detail_url}")
-                result = self._scrape_detail_page(detail_url)
-                
-                if result:
-                    page_results.append(result)
-                    all_results.append(result)
-                
-                # Rate limiting between detail page requests
-                time.sleep(1.0)
+            # Rate limiting
+            time.sleep(0.5)  # Be respectful to the server
             
-            print(f"Successfully scraped {len(page_results)} results from page {page}")
-            print(f"Total entries collected: {len(all_results)}")
-            
-            # Rate limiting between list pages
-            time.sleep(2.0)
             page += 1
             
             # Progress update every 10 pages
             if page % 10 == 0:
                 print(f"Progress: {len(all_results)} entries from {page} pages")
-                
+            
             # Save intermediate results every 50 pages
             if page % 50 == 0:
                 self.scraped_data = all_results
-                self.save_data(f"applicant_data_partial_{page}.json")
+                self.save_data(f"applicant_data_list_partial_{page}.json")
         
         self.scraped_data = all_results
         print(f"Scraping completed. Total entries: {len(all_results)}")
         return all_results
     
-    def save_data(self, filename: str = "applicant_data.json") -> None:
+    def save_data(self, filename: str = "applicant_data_list.json") -> None:
         """Save scraped data to JSON file"""
         try:
             with open(filename, 'w', encoding='utf-8') as f:
@@ -422,48 +511,52 @@ class GradCafeScraper:
         except Exception as e:
             print(f"Error saving data: {e}")
     
-    def load_data(self, filename: str = "applicant_data.json") -> List[Dict[str, Any]]:
-        """Load data from JSON file"""
-        try:
-            with open(filename, 'r', encoding='utf-8') as f:
-                self.scraped_data = json.load(f)
-            print(f"Data loaded from {filename}: {len(self.scraped_data)} entries")
-            return self.scraped_data
-        except Exception as e:
-            print(f"Error loading data: {e}")
-            return []
+    # def load_data(self, filename: str = "applicant_data_list.json") -> List[Dict[str, Any]]:
+    #     """Load data from JSON file"""
+    #     try:
+    #         with open(filename, 'r', encoding='utf-8') as f:
+    #             self.scraped_data = json.load(f)
+    #         print(f"Data loaded from {filename}: {len(self.scraped_data)} entries")
+    #         return self.scraped_data
+    #     except Exception as e:
+    #         print(f"Error loading data: {e}")
+    #         return []
 
 
 def main():
-    """Main function to run the scraper"""
+    """Main function to run the list view scraper"""
     # Initialize scraper with proper email for identification
-    scraper = GradCafeScraper(email="student.research@jhu.edu")
+    scraper = GradCafeListScraper(email="wei.liu125@jh.edu")
     
-    print("Robots.txt compliance verified.")
-    print("Please take a screenshot of https://www.thegradcafe.com/robots.txt")
-    print("and save as robots_screenshot.jpg for assignment submission.")
-    
+    print("=" * 60)
+    print("Grad Cafe List View Scraper")
+    print("=" * 60)
+
     # Start with a small test to verify the approach works
-    print("Starting with a small test (1 page, ~10-20 results)...")
-    test_results = scraper.scrape_data(target_entries=20, max_pages=1)
+    # print("\nStarting with a small test (2 pages)...")
+    # test_results = scraper.scrape_data(max_pages=2, target_entries=50)
     
-    if test_results:
-        print(f"\nTest successful! Found {len(test_results)} results.")
-        print("Sample results:")
-        for i, result in enumerate(test_results[:3]):
-            print(f"\nResult {i+1}:")
-            for key, value in result.items():
-                if value:
-                    print(f"  {key}: {value}")
+    # if test_results:
+    #     print(f"\nTest successful! Found {len(test_results)} results.")
+    #     print("\nSample results:")
         
-        print(f"\nTest completed successfully. Ready to scrape full dataset.")
-        print("Modify the max_pages parameter to scrape more data.")
-        print("For 30,000 entries, you'll need approximately 1,500-3,000 pages.")
-    else:
-        print("Test failed - no results found. Please check the parsing logic.")
+    #     # Show semester data specifically
+    #     semesters = [r.get('semester') for r in test_results if r.get('semester')]
+    #     if semesters:
+    #         print(f"\nSemester data found: {set(semesters)}")
+        
+    #     print(f"\nTest completed successfully.")
+    #     print("To scrape more data, increase max_pages parameter.")
+    #     print("For 30,000 entries, you'll need approximately 1,500 pages.")
+    # else:
+    #     print("Test failed - no results found. Please check the website structure.")
     
     # Save test results
-    scraper.save_data("applicant_data_test.json")
+    # scraper.save_data("applicant_data_list_test.json")
+
+    # For production
+    results = scraper.scrape_data(max_pages=3000, target_entries=50000)
+    scraper.save_data("applicant_data.json")
 
 
 if __name__ == "__main__":
