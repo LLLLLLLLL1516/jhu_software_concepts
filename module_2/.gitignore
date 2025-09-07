@@ -1,0 +1,16 @@
+# Ignore these files in module_2 root
+/applicant_data_test.json
+/applicant_data_list_test.json
+/cleaned_applicant_data_list.json
+/cleaned_applicant_data_list_test.json
+/list_page_raw.html
+/llm_hosting.zip
+/scrape_detailed_view.py
+
+# Ignore any file whose name is like "applicant_data_list_partial"
+# (matches anywhere under module_2, any extension)
+/applicant_data_list_partial*
+*applicant_data_list_partial*
+
+# Ignore the models folder inside module_2/llm_hosting
+/llm_hosting/models/
