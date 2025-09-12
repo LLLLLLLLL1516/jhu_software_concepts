@@ -14,3 +14,6 @@
 
 # Ignore the models folder inside module_2/llm_hosting
 **/llm_hosting/models/
+
+.DS_Store
+*.zip
