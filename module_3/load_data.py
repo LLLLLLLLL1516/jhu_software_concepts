@@ -123,7 +123,6 @@ class GradCafeDataLoader:
         term = record.get('semester', '')  # semester maps to term
         us_or_international = record.get('applicant_type', '')
         gpa = self.parse_float(record.get('gpa'))
-        # Fixed: Use gre_total instead of gre_quant, and try gre_quant as fallback
         gre = self.parse_float(record.get('gre_total')) or self.parse_float(record.get('gre_quant'))
         gre_v = self.parse_float(record.get('gre_verbal'))
         gre_aw = self.parse_float(record.get('gre_aw'))
