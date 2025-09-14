@@ -108,13 +108,16 @@ class GradCafeQueryAnalyzer:
             ROUND(AVG(gre_v)::numeric, 2) as avg_gre_v,
             ROUND(AVG(gre_aw)::numeric, 2) as avg_gre_aw
         FROM applicant_data 
-        WHERE gpa IS NOT NULL OR gre IS NOT NULL OR gre_v IS NOT NULL OR gre_aw IS NOT NULL
+        WHERE (gpa IS NOT NULL OR gre IS NOT NULL OR gre_v IS NOT NULL OR gre_aw IS NOT NULL)
+        AND (gre IS NULL OR gre <= 170)
+        AND (gre_v IS NULL OR gre_v <= 170)
+        AND (gre_aw IS NULL OR gre_aw <= 6)
         """
         
         return self.execute_query(
             "Q3_Average_Metrics",
             query,
-            "Average GPA, GRE, GRE V, GRE AW of applicants who provide these metrics"
+            "Average GPA, GRE, GRE V, GRE AW of applicants who provide these metrics (with realistic score filters)"
         )
     
     def question_4_american_fall_2025_gpa(self):

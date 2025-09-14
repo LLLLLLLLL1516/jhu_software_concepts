@@ -282,13 +282,24 @@ class GradCafeDataCleaner:
 
 def main():
     """Main function to run the data cleaner"""
+    import argparse
+    
+    # Add command line argument support
+    parser = argparse.ArgumentParser(description='Clean Grad Cafe scraped data')
+    parser.add_argument('--input', default='applicant_data.json', 
+                       help='Input JSON file (default: applicant_data.json)')
+    parser.add_argument('--output', default='cleaned_applicant_data.json',
+                       help='Output JSON file (default: cleaned_applicant_data.json)')
+    
+    args = parser.parse_args()
+    
     cleaner = GradCafeDataCleaner()
     
-    # Load raw data from list view scraper (new format)
-    raw_data = cleaner.load_data("applicant_data.json")
+    # Load raw data from specified input file
+    raw_data = cleaner.load_data(args.input)
     
     if not raw_data:
-        print("No data found to clean. Please run scrape_list_view.py first.")
+        print(f"No data found to clean in {args.input}. Please check the file exists.")
         return
     
     # Clean the data
@@ -297,8 +308,8 @@ def main():
     # Remove duplicates
     unique_data = cleaner.remove_duplicates(cleaned_data)
     
-    # Save cleaned data
-    cleaner.save_data(unique_data, "cleaned_applicant_data.json")
+    # Save cleaned data to specified output file
+    cleaner.save_data(unique_data, args.output)
     
     # Print statistics
     stats = cleaner.get_data_statistics(unique_data)
@@ -307,6 +318,7 @@ def main():
         print(f"  {key}: {value}")
     
     print(f"\nData cleaning complete! {len(unique_data)} entries ready for LLM processing.")
+    print(f"Cleaned data saved to: {args.output}")
 
 
 if __name__ == "__main__":
