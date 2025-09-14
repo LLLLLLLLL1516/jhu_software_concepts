@@ -4,11 +4,11 @@
 **Course:** EN.605.256.8VL.FA25 - Software Concepts  
 **Due Date:** September 14, 2025
 
-## 🎯 Overview
+## Overview
 
 This module builds upon Module 2's data collection and cleaning pipeline by creating a comprehensive Flask web application that displays SQL query results and provides dynamic data management capabilities. The application includes dashboard, real-time data updates, and automated pipeline management.
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 module_3/
@@ -29,7 +29,7 @@ module_3/
 └── module_3_query_analysis_report.pdf  # Generated analysis report
 ```
 
-## 🏗️ Technical Architecture
+## Technical Architecture
 
 ### Database Schema
 - **Database:** PostgreSQL (`gradcafe_db`)
@@ -61,7 +61,7 @@ module_3/
 - **Static assets:** CSS, JavaScript, and images
 - **Error handling:** Custom error pages and comprehensive logging
 
-## 🔧 Core Components
+## Core Components
 
 ### 1. Database Setup (`load_data.py`)
 - **PostgreSQL Integration:** Using psycopg3 for modern connectivity
@@ -141,7 +141,7 @@ module_3/
 - **Interactive Elements:** Hover effects and smooth transitions
 - **Clear User Guidance:** Explanatory text and intuitive interface
 
-## 📊 Query Results Summary
+## Query Results Summary
 
 | Question | Result |
 |----------|--------|
@@ -156,7 +156,7 @@ module_3/
 | 9. Penn State international % Fall 2025 | **58.33%** |
 | 10. Penn State 2025 acceptances | **25** |
 
-## 🚀 Usage Instructions
+## Usage Instructions
 
 ### Initial Setup
 
@@ -236,7 +236,7 @@ cd ..
 python load_data.py --input new_llm_extend_applicant_data.jsonl
 ```
 
-## 🚀 Future Enhancements
+## Future Enhancements
 
 - **Query Result Caching:** Faster page loads for repeated queries
 - **User Authentication:** Session management and user accounts
@@ -245,7 +245,7 @@ python load_data.py --input new_llm_extend_applicant_data.jsonl
 - **Advanced Filtering:** Search and filter capabilities
 - **API Endpoints:** RESTful API for external integrations
 
-## 📝 Known Issues
+## Known Issues
 
 - **Initial Load Time:** May take a few seconds due to query execution on 50,000+ records
 - **"Last Update" Display:** Shows "Never" until first use of "Pull Data" button
