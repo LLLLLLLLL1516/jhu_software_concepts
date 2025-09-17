@@ -19,10 +19,10 @@
                 </div>
                 <div class="text-end">
                     <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-success btn-lg" id="pullDataBtn" onclick="pullData()">
+                        <button type="button" class="btn btn-success btn-lg" id="pullDataBtn" data-testid="pull-data-btn" onclick="pullData()">
                             <i class="fas fa-download me-2"></i>Pull Data
                         </button>
-                        <button type="button" class="btn btn-primary btn-lg" id="updateAnalysisBtn" onclick="updateAnalysis()">
+                        <button type="button" class="btn btn-primary btn-lg" id="updateAnalysisBtn" data-testid="update-analysis-btn" onclick="updateAnalysis()">
                             <i class="fas fa-refresh me-2"></i>Update Analysis
                         </button>
                     </div>
@@ -138,7 +138,11 @@
                         {% else %}
                             <h3 class="text-center text-primary mb-0">
                                 {% if 'percentage' in data.description.lower() or 'percent' in data.description.lower() %}
-                                    {{ data.result }}%
+                                    {% if data.result is number %}
+                                        {{ "{:.2f}".format(data.result) }}%
+                                    {% else %}
+                                        {{ data.result }}%
+                                    {% endif %}
                                 {% else %}
                                     {% if data.result is number %}
                                         {{ "{:,}".format(data.result) }}
@@ -213,20 +217,30 @@ function pullData() {
     updateBtn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
     
-    fetch('/pull_data', {
+    fetch('/pull-data', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            if (response.status === 409) {
+                // System is busy
+                throw new Error('Data pulling is already in progress. Please wait for it to complete.');
+            }
+            throw new Error('Server error: ' + response.status);
+        }
+        return response.json();
+    })
     .then(data => {
-        if (data.success) {
-            // Show status modal and start polling
-            showStatusModal();
-            pollStatus();
+        if (data.ok) {
+            // Reload page
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
         } else {
-            alert('Error: ' + data.message);
+            alert('Error: ' + (data.message || 'Unknown error occurred'));
             // Re-enable buttons
             btn.disabled = false;
             updateBtn.disabled = false;
@@ -235,7 +249,7 @@ function pullData() {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while starting data pull');
+        alert(error.message || 'An error occurred while starting data pull');
         // Re-enable buttons
         btn.disabled = false;
         updateBtn.disabled = false;
@@ -246,23 +260,39 @@ function pullData() {
 function updateAnalysis() {
     const btn = document.getElementById('updateAnalysisBtn');
     
-    fetch('/update_analysis', {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+    
+    fetch('/update-analysis', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            if (response.status === 409) {
+                // System is busy
+                throw new Error('Data pulling is in progress. Please wait for it to complete before updating analysis.');
+            }
+            throw new Error('Server error: ' + response.status);
+        }
+        return response.json();
+    })
     .then(data => {
-        if (data.success) {
+        if (data.ok) {
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            alert('Error: ' + (data.message || 'Unknown error occurred'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-refresh me-2"></i>Update Analysis';
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while updating analysis');
+        alert(error.message || 'An error occurred while updating analysis');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-refresh me-2"></i>Update Analysis';
     });
 }
 
