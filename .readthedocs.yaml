@@ -13,8 +13,3 @@ sphinx:
 python:
   install:
     - requirements: module_4/src/requirements.txt
-    - method: pip
-      path: .
-      extra_requirements:
-        - sphinx
-        - sphinx_rtd_theme
