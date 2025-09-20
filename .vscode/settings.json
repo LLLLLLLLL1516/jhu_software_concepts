@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./module_4",
+        "./module_4/src"
+    ]
+}
