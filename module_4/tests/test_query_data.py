@@ -459,17 +459,19 @@ from unittest.mock import patch, MagicMock
 # Add src to path
 sys.path.insert(0, os.path.join("{test_dir}", "..", "src"))
 
-# Mock the analyzer to return success
-mock_analyzer = MagicMock()
-mock_analyzer.connect_to_database.return_value = True
-mock_analyzer.run_all_queries.return_value = None
-mock_analyzer.print_summary_report.return_value = None
-mock_analyzer.close_connection.return_value = None
-
-with patch('query_data.GradCafeQueryAnalyzer', return_value=mock_analyzer):
-    # Now run the module as __main__
-    import runpy
-    runpy.run_path(os.path.join("{test_dir}", "..", "src", "query_data.py"), run_name="__main__")
+# Mock psycopg to prevent actual database connection
+with patch('psycopg.connect'):
+    # Mock the analyzer to return success
+    mock_analyzer = MagicMock()
+    mock_analyzer.connect_to_database.return_value = True
+    mock_analyzer.run_all_queries.return_value = None
+    mock_analyzer.print_summary_report.return_value = None
+    mock_analyzer.close_connection.return_value = None
+    
+    with patch('query_data.GradCafeQueryAnalyzer', return_value=mock_analyzer):
+        # Now run the module as __main__
+        import runpy
+        runpy.run_path(os.path.join("{test_dir}", "..", "src", "query_data.py"), run_name="__main__")
 '''
     
     # Write and execute the test script
@@ -556,24 +558,26 @@ def test_main_block_execution():
     with open(spec.origin, 'r') as f:
         source_code = f.read()
     
-    # Mock the main function and sys.exit
-    with patch('sys.exit') as mock_exit:
-        # Create a namespace with mocked main
-        mock_main = MagicMock(return_value=True)  # Return success
-        namespace = {
-            '__name__': '__main__',
-            '__file__': spec.origin,
-            'main': mock_main,
-            'sys': sys
-        }
-        
-        # Execute the module code
-        exec(compile(source_code, spec.origin, 'exec'), namespace)
-        
-        # The main should have been called and sys.exit(0) should be called
-        if namespace.get('__name__') == '__main__':
-            # This simulates lines 444-445
-            success = namespace['main']()
-            sys.exit(0 if success else 1)
+    # Mock psycopg to prevent actual database connection
+    with patch('psycopg.connect'):
+        # Mock the main function and sys.exit
+        with patch('sys.exit') as mock_exit:
+            # Create a namespace with mocked main
+            mock_main = MagicMock(return_value=True)  # Return success
+            namespace = {
+                '__name__': '__main__',
+                '__file__': spec.origin,
+                'main': mock_main,
+                'sys': sys
+            }
             
-        mock_exit.assert_called_with(0)
+            # Execute the module code
+            exec(compile(source_code, spec.origin, 'exec'), namespace)
+            
+            # The main should have been called and sys.exit(0) should be called
+            if namespace.get('__name__') == '__main__':
+                # This simulates lines 444-445
+                success = namespace['main']()
+                sys.exit(0 if success else 1)
+                
+            mock_exit.assert_called_with(0)

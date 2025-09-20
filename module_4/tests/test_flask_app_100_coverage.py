@@ -431,7 +431,7 @@ class TestFlaskApp100Coverage:
                             assert response.status_code == 202
                             
                             assert scraping_status['error'] is not None
-                            assert 'Failed to load new data' in scraping_status['error']
+                            assert 'Database loading error' in scraping_status['error']
     
     @pytest.mark.web
     def test_main_execution(self):

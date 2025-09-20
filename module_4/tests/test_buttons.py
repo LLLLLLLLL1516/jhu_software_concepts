@@ -188,12 +188,16 @@ def test_concurrent_update_analysis_requests(client, fake_scraper, mock_psycopg_
 def test_button_endpoints_accept_json_content_type(client, mock_psycopg_connect):
     """Test that endpoints accept JSON content type"""
     scraping_status['is_running'] = False
+    scraping_status['error'] = None
     
     # Test with explicit JSON content type
     response = client.post('/pull-data', 
                           data=json.dumps({}),
                           content_type='application/json')
     assert response.status_code == 202
+    
+    # Reset status again before second request
+    scraping_status['is_running'] = False
     
     response = client.post('/update-analysis',
                           data=json.dumps({}), 
