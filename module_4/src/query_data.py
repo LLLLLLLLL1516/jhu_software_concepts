@@ -24,16 +24,31 @@ DB_CONFIG = {
 }
 
 class GradCafeQueryAnalyzer:
-    """Class to handle SQL queries for grad café data analysis"""
+    """
+    Run predefined SQL analytics queries on Grad Café data.
+
+    Manages a DB connection and builds a ``results`` dictionary keyed by query name,
+    with each value containing a ``description``, the SQL ``query``, and the ``result``.
+    """
     
     def __init__(self, db_config: Dict[str, Any]):
-        """Initialize the query analyzer with database configuration"""
+        """
+        Initialize the query analyzer.
+
+        :param db_config: Connection parameters (``host``, ``port``, ``dbname``, ``user``, ``password``).
+        :type db_config: dict
+        """
         self.db_config = db_config
         self.connection = None
         self.results = {}
         
     def connect_to_database(self) -> bool:
-        """Establish connection to PostgreSQL database"""
+        """
+        Establish a connection to PostgreSQL.
+
+        :return: True if connected successfully, otherwise False.
+        :rtype: bool
+        """
         try:
             self.connection = psycopg.connect(**self.db_config)
             print("Successfully connected to PostgreSQL database")
@@ -43,7 +58,21 @@ class GradCafeQueryAnalyzer:
             return False
     
     def execute_query(self, query_name: str, query: str, description: str) -> Any:
-        """Execute a SQL query and store the result"""
+        """
+        Execute a SQL query and store the first row's first column (or row) in ``results``.
+
+        The stored entry has the shape:
+        ``results[query_name] = {"description": str, "query": str, "result": Any}``.
+
+        :param query_name: Stable key under which to store the result.
+        :type query_name: str
+        :param query: SQL string to execute.
+        :type query: str
+        :param description: Human-readable description of the query.
+        :type description: str
+        :return: The scalar value (if single column) or the raw row/None.
+        :rtype: Any
+        """
         try:
             with self.connection.cursor() as cursor:
                 cursor.execute(query)
@@ -68,7 +97,12 @@ class GradCafeQueryAnalyzer:
             return None
     
     def question_1_fall_2025_entries(self):
-        """Q1: How many entries do you have in your database who have applied for Fall 2025?"""
+        """
+        Q1: Count entries who applied for Fall 2025.
+
+        :return: Integer count.
+        :rtype: int | None
+        """
         query = """
         SELECT COUNT(*) 
         FROM applicant_data 
@@ -82,7 +116,14 @@ class GradCafeQueryAnalyzer:
         )
     
     def question_2_international_percentage(self):
-        """Q2: What percentage of entries are from international students (not American or Other)?"""
+        """
+        Q2: Percentage of entries from international students.
+
+        Includes rows where ``us_or_international`` is non-empty. Rounded to 2 decimals.
+
+        :return: Percentage value (e.g., 42.33).
+        :rtype: float | None
+        """
         query = """
         SELECT ROUND(
             (COUNT(*) FILTER (WHERE us_or_international ILIKE '%International%') * 100.0 / COUNT(*)), 
@@ -100,7 +141,14 @@ class GradCafeQueryAnalyzer:
         )
     
     def question_3_average_metrics(self):
-        """Q3: What is the average GPA, GRE, GRE V, GRE AW of applicants who provide these metrics?"""
+        """
+        Q3: Average GPA, GRE, GRE V, GRE AW for applicants who provided them.
+
+        Applies sanity caps (GRE≤170, GRE V≤170, GRE AW≤6) and rounds to 2 decimals.
+
+        :return: Row with ``(avg_gpa, avg_gre, avg_gre_v, avg_gre_aw)``.
+        :rtype: tuple | None
+        """
         query = """
         SELECT 
             ROUND(AVG(gpa)::numeric, 2) as avg_gpa,
@@ -121,7 +169,19 @@ class GradCafeQueryAnalyzer:
         )
     
     def question_4_american_fall_2025_gpa(self):
-        """Q4: What is their average GPA of American students in Fall 2025?"""
+        """
+        Q4: Average GPA of American students in Fall 2025.
+
+        :return: Average GPA rounded to 2 decimals.
+        :rtype: float | None
+        """
+        query = """
+        SELECT ROUND(AVG(gpa)::numeric, 2) as avg_american_gpa_fall_2025
+        FROM applicant_data 
+        WHERE term ILIKE '%Fall 2025%' 
+        AND us_or_international ILIKE '%American%'
+        AND gpa IS NOT NULL
+        """
         query = """
         SELECT ROUND(AVG(gpa)::numeric, 2) as avg_american_gpa_fall_2025
         FROM applicant_data 
@@ -137,7 +197,12 @@ class GradCafeQueryAnalyzer:
         )
     
     def question_5_fall_2025_acceptance_rate(self):
-        """Q5: What percent of entries for Fall 2025 are Acceptances?"""
+        """
+        Q5: Percentage of Fall 2025 entries that are acceptances.
+
+        :return: Percentage value rounded to 2 decimals.
+        :rtype: float | None
+        """
         query = """
         SELECT ROUND(
             (COUNT(*) FILTER (WHERE status ILIKE '%Accept%') * 100.0 / COUNT(*)), 
@@ -154,7 +219,12 @@ class GradCafeQueryAnalyzer:
         )
     
     def question_6_fall_2025_accepted_gpa(self):
-        """Q6: What is the average GPA of applicants who applied for Fall 2025 who are Acceptances?"""
+        """
+        Q6: Average GPA of accepted applicants who applied for Fall 2025.
+
+        :return: Average GPA rounded to 2 decimals.
+        :rtype: float | None
+        """
         query = """
         SELECT ROUND(AVG(gpa)::numeric, 2) as avg_gpa_accepted_fall_2025
         FROM applicant_data 
@@ -170,7 +240,14 @@ class GradCafeQueryAnalyzer:
         )
     
     def question_7_jhu_cs_masters(self):
-        """Q7: How many entries are from applicants who applied to JHU for a masters degrees in Computer Science?"""
+        """
+        Q7: Count of JHU Computer Science Masters applications.
+
+        Matches by program/university name or LLM-generated fields.
+
+        :return: Integer count.
+        :rtype: int | None
+        """
         query = """
         SELECT COUNT(*) 
         FROM applicant_data 
@@ -194,7 +271,12 @@ class GradCafeQueryAnalyzer:
         )
     
     def question_8_georgetown_cs_phd_2025_acceptances(self):
-        """Q8: How many entries from 2025 are acceptances from applicants who applied to Georgetown University for a PhD in Computer Science?"""
+        """
+        Q8: 2025 acceptances for Georgetown CS PhD.
+
+        :return: Integer count.
+        :rtype: int | None
+        """
         query = """
         SELECT COUNT(*) 
         FROM applicant_data 
@@ -219,7 +301,12 @@ class GradCafeQueryAnalyzer:
         )
     
     def question_9_penn_state_international_fall_2025(self):
-        """Q9: Pennsylvania State University International Student Percentage for Fall 2025"""
+        """
+        Q9: Percent of international entries for Penn State in Fall 2025.
+
+        :return: Percentage value rounded to 2 decimals.
+        :rtype: float | None
+        """
         query = """
         SELECT ROUND(
             (COUNT(*) FILTER (WHERE us_or_international ILIKE '%International%') * 100.0 / COUNT(*)), 
@@ -245,7 +332,12 @@ class GradCafeQueryAnalyzer:
         )
     
     def question_10_penn_state_2025_acceptances(self):
-        """Q10: Pennsylvania State University Fall 2025 Acceptances"""
+        """
+        Q10: 2025 acceptances for Penn State.
+
+        :return: Integer count.
+        :rtype: int | None
+        """
         query = """
         SELECT COUNT(*) 
         FROM applicant_data 
@@ -267,7 +359,13 @@ class GradCafeQueryAnalyzer:
         )
     
     def run_all_queries(self):
-        """Execute all queries in sequence"""
+        """
+        Execute all predefined queries in sequence.
+
+        Populates :pyattr:`results` for each question key.
+        :return: None
+        :rtype: None
+        """
         print("Starting Grad Café Data Analysis")
         print("=" * 60)
         
@@ -287,7 +385,12 @@ class GradCafeQueryAnalyzer:
         print("Analysis Complete!")
         
     def print_summary_report(self):
-        """Print a formatted summary of all results"""
+        """
+        Print a human-readable summary of all stored results.
+
+        :return: None
+        :rtype: None
+        """
         print("\nSUMMARY REPORT")
         print("=" * 80)
         
@@ -298,13 +401,23 @@ class GradCafeQueryAnalyzer:
         print("\n" + "=" * 80)
     
     def close_connection(self):
-        """Close database connection"""
+        """
+        Close the database connection if open.
+
+        :return: None
+        :rtype: None
+        """
         if self.connection:
             self.connection.close()
             print("Database connection closed")
 
 def main():
-    """Main function to execute all queries"""
+    """
+    Command-line entry point to execute all queries and print a summary.
+
+    :return: True on success, False otherwise.
+    :rtype: bool
+    """
     analyzer = GradCafeQueryAnalyzer(DB_CONFIG)
     
     try:

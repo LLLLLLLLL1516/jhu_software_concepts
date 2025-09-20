@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-Data cleaning module for Grad Cafe scraped data
-Cleans and standardizes the scraped admission results
+Data cleaning module for Grad Cafe scraped data.
+
+This module provides the :class:`GradCafeDataCleaner` class for cleaning
+and standardizing scraped admission results. It handles normalization
+of text fields, GPA/GRE extraction, duplicate removal, and output to JSON.
 """
 
 import json
@@ -10,13 +13,26 @@ from typing import List, Dict, Any, Optional
 
 
 class GradCafeDataCleaner:
-    """Data cleaner for Grad Cafe admission results"""
+    """
+    Data cleaner for Grad Cafe admission results.
+
+    Provides methods to clean, normalize, and deduplicate scraped data
+    from Grad Cafe for downstream analysis or storage.
+    """
     
     def __init__(self):
+        """Initialize the cleaner with an empty dataset."""
         self.cleaned_data = []
         
     def _clean_text(self, text: str) -> str:
-        """Remove HTML tags and clean text"""
+        """
+        Remove HTML tags, extra whitespace, and common entities.
+
+        :param text: Input text possibly containing HTML tags or entities.
+        :type text: str
+        :return: Cleaned text with tags removed and entities replaced.
+        :rtype: str
+        """
         if not text:
             return ""
         
@@ -36,7 +52,14 @@ class GradCafeDataCleaner:
         return text
     
     def _standardize_degree(self, degree: str) -> Optional[str]:
-        """Standardize degree field"""
+        """
+        Standardize the degree field into categories (PhD, Masters, Bachelors).
+
+        :param degree: Raw degree string.
+        :type degree: str
+        :return: Standardized degree string or None if empty.
+        :rtype: Optional[str]
+        """
         if not degree:
             return None
 
@@ -54,7 +77,14 @@ class GradCafeDataCleaner:
             return original if original else None
     
     def _standardize_status(self, status: str) -> Optional[str]:
-        """Standardize status field and extract dates"""
+        """
+        Standardize admission status values.
+
+        :param status: Raw status string.
+        :type status: str
+        :return: Standardized status string or None if empty.
+        :rtype: Optional[str]
+        """
         if not status:
             return None
             
@@ -74,7 +104,14 @@ class GradCafeDataCleaner:
             return status
     
     def _standardize_term(self, term: str) -> Optional[str]:
-        """Standardize term/season field"""
+        """
+        Standardize the term/season field.
+
+        :param term: Raw term string (e.g., "Fall 2024").
+        :type term: str
+        :return: Standardized term string or None if not parseable.
+        :rtype: Optional[str]
+        """
         if not term:
             return None
             
@@ -92,7 +129,14 @@ class GradCafeDataCleaner:
             return term
     
     def _standardize_international_status(self, status: str) -> Optional[str]:
-        """Standardize US/International field"""
+        """
+        Standardize the US/International applicant field.
+
+        :param status: Raw applicant type string.
+        :type status: str
+        :return: Standardized "International" or "American", or cleaned value.
+        :rtype: Optional[str]
+        """
         if not status:
             return None
             
@@ -120,7 +164,14 @@ class GradCafeDataCleaner:
     #         return gpa_text if gpa_text else None
     
     def _extract_gpa_new_format(self, gpa_value: str) -> Optional[str]:
-        """Extract and standardize GPA (new format - just the number)"""
+        """
+        Extract and standardize GPA values (numeric only).
+
+        :param gpa_value: Raw GPA string or number.
+        :type gpa_value: str
+        :return: Extracted GPA number as string, or None if invalid.
+        :rtype: Optional[str]
+        """
         if not gpa_value or gpa_value == "-":
             return None
             
@@ -134,7 +185,16 @@ class GradCafeDataCleaner:
             return gpa_value if gpa_value else None
     
     def _extract_gre_score(self, score_text: str, score_type: str) -> Optional[str]:
-        """Extract and standardize GRE scores"""
+        """
+        Extract and standardize GRE scores.
+
+        :param score_text: Raw GRE score string.
+        :type score_text: str
+        :param score_type: GRE section type (Total, Verbal, Quantitative, Analytical Writing).
+        :type score_type: str
+        :return: Extracted GRE score as string, or None if invalid.
+        :rtype: Optional[str]
+        """
         if not score_text or score_text == "-":
             return None
             
@@ -148,7 +208,14 @@ class GradCafeDataCleaner:
             return score_text if score_text else None
     
     def _clean_program_field(self, program: str) -> str:
-        """Clean the program field for LLM processing"""
+        """
+        Clean the program field for standardization.
+
+        :param program: Raw program string.
+        :type program: str
+        :return: Cleaned program string.
+        :rtype: str
+        """
         if not program:
             return ""
             
@@ -161,7 +228,14 @@ class GradCafeDataCleaner:
         return program.strip()
     
     def _clean_single_entry(self, entry: Dict[str, Any]) -> Dict[str, Any]:
-        """Clean a single data entry (new list view format only)"""
+        """
+        Clean a single scraped entry.
+
+        :param entry: Raw scraped entry dictionary.
+        :type entry: dict
+        :return: Cleaned entry dictionary.
+        :rtype: dict
+        """
         cleaned_entry = {}
         
         # New format from list view scraper
@@ -186,13 +260,12 @@ class GradCafeDataCleaner:
     
     def clean_data(self, raw_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Main cleaning method to process all scraped data
-        
-        Args:
-            raw_data: List of raw scraped entries
-            
-        Returns:
-            List of cleaned entries
+        Clean a list of raw scraped entries.
+
+        :param raw_data: List of raw entries from the scraper.
+        :type raw_data: list[dict]
+        :return: List of cleaned entries.
+        :rtype: list[dict]
         """
         print(f"Starting data cleaning for {len(raw_data)} entries...")
         
@@ -215,16 +288,23 @@ class GradCafeDataCleaner:
         return cleaned_entries
     
     def remove_duplicates(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Remove duplicate entries based on key fields"""
+        """
+        Remove duplicate entries based on program, status, date, and URL.
+
+        :param data: List of cleaned entries.
+        :type data: list[dict]
+        :return: List with duplicates removed.
+        :rtype: list[dict]
+        """
         seen = set()
         unique_data = []
         
         for entry in data:
             # Create a key based on program, status, and date
             key = (
-                entry.get("program", "").lower(),
-                entry.get("status", "").lower(),
-                entry.get("date_added", "").lower(),
+                (entry.get("program") or "").lower(),
+                (entry.get("status") or "").lower(),
+                (entry.get("date_added") or "").lower(),
                 entry.get("url", "")
             )
             
@@ -236,7 +316,14 @@ class GradCafeDataCleaner:
         return unique_data
     
     def save_data(self, data: List[Dict[str, Any]], filename: str = "cleaned_applicant_data.json") -> None:
-        """Save cleaned data to JSON file"""
+        """
+        Save cleaned data to a JSON file.
+
+        :param data: Cleaned data to save.
+        :type data: list[dict]
+        :param filename: Output JSON file path.
+        :type filename: str
+        """
         try:
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -245,7 +332,14 @@ class GradCafeDataCleaner:
             print(f"Error saving cleaned data: {e}")
     
     def load_data(self, filename: str = "applicant_data.json") -> List[Dict[str, Any]]:
-        """Load raw data from JSON file"""
+        """
+        Load raw data from a JSON file.
+
+        :param filename: Input JSON file path.
+        :type filename: str
+        :return: Loaded list of raw entries.
+        :rtype: list[dict]
+        """
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -256,7 +350,14 @@ class GradCafeDataCleaner:
             return []
     
     def get_data_statistics(self, data: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Generate statistics about the cleaned data (new format only)"""
+        """
+        Generate statistics from cleaned data.
+
+        :param data: List of cleaned entries.
+        :type data: list[dict]
+        :return: Dictionary of statistics (counts, unique values, etc.).
+        :rtype: dict
+        """
         if not data:
             return {}
         
@@ -281,7 +382,23 @@ class GradCafeDataCleaner:
 
 
 def main():
-    """Main function to run the data cleaner"""
+    """
+    Command-line entry point to clean and deduplicate Grad Cafe scraped data.
+
+    This command:
+      1) Loads raw JSON data
+      2) Cleans and normalizes fields
+      3) Removes duplicates
+      4) Saves cleaned JSON
+      5) Prints summary statistics
+
+    :param --input: Input JSON file containing raw scraped entries.
+    :type --input: str
+    :param --output: Output JSON file path for cleaned entries.
+    :type --output: str
+    :return: None
+    :rtype: None
+    """
     import argparse
     
     # Add command line argument support

@@ -1,0 +1,374 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture Overview &mdash; GradCafe Data Analysis 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api.html" />
+    <link rel="prev" title="Usage Guide" href="usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            GradCafe Data Analysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="modules.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Architecture Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#system-architecture">System Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#layer-responsibilities">Layer Responsibilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#web-layer">Web Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#etl-layer">ETL Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#database-layer">Database Layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#query-analysis-layer">Query &amp; Analysis Layer</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#data-flow">Data Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#design-patterns">Design Patterns</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dependency-injection">Dependency Injection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#singleton-pattern">Singleton Pattern</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#factory-pattern">Factory Pattern</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#error-handling-strategy">Error Handling Strategy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#performance-considerations">Performance Considerations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#security-considerations">Security Considerations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#scalability">Scalability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#future-enhancements">Future Enhancements</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">GradCafe Data Analysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Architecture Overview</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/architecture.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="architecture-overview">
+<h1>Architecture Overview<a class="headerlink" href="#architecture-overview" title="Link to this heading"></a></h1>
+<p>This document describes the architecture of the GradCafe Data Analysis system, including the web, ETL, and database layers and their responsibilities.</p>
+<section id="system-architecture">
+<h2>System Architecture<a class="headerlink" href="#system-architecture" title="Link to this heading"></a></h2>
+<p>The GradCafe Data Analysis system follows a layered architecture pattern with clear separation of concerns:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>┌─────────────────────────────────────────────────┐
+│           Web Interface Layer                   │
+│         (Flask Application)                     │
+└─────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────┐
+│           Business Logic Layer                  │
+│    (Query Analysis &amp; Data Processing)           │
+└─────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────┐
+│              ETL Pipeline Layer                 │
+│    (Extract, Transform, Load)                   │
+└─────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────┐
+│            Data Storage Layer                   │
+│         (PostgreSQL Database)                   │
+└─────────────────────────────────────────────────┘
+</pre></div>
+</div>
+</section>
+<section id="layer-responsibilities">
+<h2>Layer Responsibilities<a class="headerlink" href="#layer-responsibilities" title="Link to this heading"></a></h2>
+<section id="web-layer">
+<h3>Web Layer<a class="headerlink" href="#web-layer" title="Link to this heading"></a></h3>
+<p><strong>Component</strong>: <code class="docutils literal notranslate"><span class="pre">flask_app.py</span></code></p>
+<p><strong>Responsibilities</strong>:</p>
+<ul class="simple">
+<li><p>Serve the web interface for users to interact with the system</p></li>
+<li><p>Provide RESTful API endpoints for data operations</p></li>
+<li><p>Handle HTTP requests and responses</p></li>
+<li><p>Manage session state and busy indicators</p></li>
+<li><p>Render HTML templates with analysis results</p></li>
+<li><p>Coordinate background operations (pull data, update analysis)</p></li>
+</ul>
+<p><strong>Key Features</strong>:</p>
+<ul class="simple">
+<li><p>Dependency injection for testability</p></li>
+<li><p>Thread-safe operation management</p></li>
+<li><p>Real-time status updates</p></li>
+<li><p>Error handling and user feedback</p></li>
+</ul>
+</section>
+<section id="etl-layer">
+<h3>ETL Layer<a class="headerlink" href="#etl-layer" title="Link to this heading"></a></h3>
+<p>The ETL (Extract, Transform, Load) layer consists of multiple components working together:</p>
+<p><strong>Extract Component</strong>: <code class="docutils literal notranslate"><span class="pre">scrape.py</span></code> and <code class="docutils literal notranslate"><span class="pre">incremental_scraper.py</span></code></p>
+<p><strong>Responsibilities</strong>:</p>
+<ul class="simple">
+<li><p>Fetch admission data from GradCafe website</p></li>
+<li><p>Respect robots.txt and implement polite scraping</p></li>
+<li><p>Handle pagination and data extraction</p></li>
+<li><p>Manage incremental updates (only new data)</p></li>
+<li><p>Save raw data to JSON format</p></li>
+</ul>
+<p><strong>Transform Component</strong>: <code class="docutils literal notranslate"><span class="pre">clean.py</span></code></p>
+<p><strong>Responsibilities</strong>:</p>
+<ul class="simple">
+<li><p>Parse and validate raw admission data</p></li>
+<li><p>Standardize data formats (dates, GPA, GRE scores)</p></li>
+<li><p>Handle missing or malformed data</p></li>
+<li><p>Apply data quality rules</p></li>
+<li><p>Generate cleaned data output</p></li>
+</ul>
+<p><strong>Load Component</strong>: <code class="docutils literal notranslate"><span class="pre">load_data.py</span></code></p>
+<p><strong>Responsibilities</strong>:</p>
+<ul class="simple">
+<li><p>Connect to PostgreSQL database</p></li>
+<li><p>Create and manage database schema</p></li>
+<li><p>Insert cleaned data into tables</p></li>
+<li><p>Handle duplicate detection</p></li>
+<li><p>Manage transaction integrity</p></li>
+<li><p>Log operations for audit trail</p></li>
+</ul>
+</section>
+<section id="database-layer">
+<h3>Database Layer<a class="headerlink" href="#database-layer" title="Link to this heading"></a></h3>
+<p><strong>Component</strong>: PostgreSQL Database</p>
+<p><strong>Responsibilities</strong>:</p>
+<ul class="simple">
+<li><p>Store admission data persistently</p></li>
+<li><p>Provide ACID compliance for data integrity</p></li>
+<li><p>Support complex SQL queries for analysis</p></li>
+<li><p>Maintain indexes for query performance</p></li>
+<li><p>Handle concurrent access</p></li>
+</ul>
+<p><strong>Schema Design</strong>:</p>
+<p>The database uses a single denormalized table <code class="docutils literal notranslate"><span class="pre">admission_results</span></code> with columns for:</p>
+<ul class="simple">
+<li><p>Application details (university, program, degree)</p></li>
+<li><p>Applicant information (GPA, GRE scores)</p></li>
+<li><p>Decision information (status, date, season)</p></li>
+<li><p>Metadata (submission date, comments)</p></li>
+</ul>
+</section>
+<section id="query-analysis-layer">
+<h3>Query &amp; Analysis Layer<a class="headerlink" href="#query-analysis-layer" title="Link to this heading"></a></h3>
+<p><strong>Component</strong>: <code class="docutils literal notranslate"><span class="pre">query_data.py</span></code></p>
+<p><strong>Responsibilities</strong>:</p>
+<ul class="simple">
+<li><p>Execute predefined analytical queries</p></li>
+<li><p>Calculate admission statistics</p></li>
+<li><p>Generate summary reports</p></li>
+<li><p>Format results for presentation</p></li>
+<li><p>Support custom query execution</p></li>
+</ul>
+<p><strong>Analysis Types</strong>:</p>
+<ul class="simple">
+<li><p>Acceptance rates by program</p></li>
+<li><p>GPA/GRE score distributions</p></li>
+<li><p>Seasonal admission trends</p></li>
+<li><p>University-specific statistics</p></li>
+<li><p>Decision timeline analysis</p></li>
+</ul>
+</section>
+</section>
+<section id="data-flow">
+<h2>Data Flow<a class="headerlink" href="#data-flow" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p><strong>Data Collection Flow</strong>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GradCafe Website → Scraper → Raw JSON → Cleaner → Cleaned JSON → Loader → PostgreSQL
+</pre></div>
+</div>
+</li>
+<li><p><strong>Analysis Flow</strong>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>PostgreSQL → Query Analyzer → Statistics → Flask App → Web Interface → User
+</pre></div>
+</div>
+</li>
+<li><p><strong>Incremental Update Flow</strong>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Database (last date) → Incremental Scraper → New Data Only → ETL Pipeline → Database
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="design-patterns">
+<h2>Design Patterns<a class="headerlink" href="#design-patterns" title="Link to this heading"></a></h2>
+<section id="dependency-injection">
+<h3>Dependency Injection<a class="headerlink" href="#dependency-injection" title="Link to this heading"></a></h3>
+<p>The system uses dependency injection to improve testability:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_app</span><span class="p">(</span><span class="n">scraper</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">db_config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create Flask app with optional dependencies.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">scraper</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">scraper</span> <span class="o">=</span> <span class="n">GradCafeListScraper</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">db_config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">db_config</span> <span class="o">=</span> <span class="n">DEFAULT_DB_CONFIG</span>
+    <span class="c1"># ... rest of app creation</span>
+</pre></div>
+</div>
+<p>This allows tests to inject mock objects without hitting real services.</p>
+</section>
+<section id="singleton-pattern">
+<h3>Singleton Pattern<a class="headerlink" href="#singleton-pattern" title="Link to this heading"></a></h3>
+<p>The Flask application uses a singleton pattern for managing operation state:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">is_running</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Global state for operation status</span>
+
+<span class="k">def</span> <span class="nf">check_busy</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if an operation is running.&quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">is_running</span>
+    <span class="k">return</span> <span class="n">is_running</span>
+</pre></div>
+</div>
+</section>
+<section id="factory-pattern">
+<h3>Factory Pattern<a class="headerlink" href="#factory-pattern" title="Link to this heading"></a></h3>
+<p>The application uses factory pattern for creating configured instances:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_app</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Application factory.&quot;&quot;&quot;</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">config</span><span class="p">:</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">app</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="error-handling-strategy">
+<h2>Error Handling Strategy<a class="headerlink" href="#error-handling-strategy" title="Link to this heading"></a></h2>
+<p>The system implements comprehensive error handling:</p>
+<ol class="arabic simple">
+<li><p><strong>Network Errors</strong>: Retry logic with exponential backoff</p></li>
+<li><p><strong>Database Errors</strong>: Transaction rollback and logging</p></li>
+<li><p><strong>Data Validation Errors</strong>: Skip invalid records with logging</p></li>
+<li><p><strong>User Input Errors</strong>: Validation and feedback messages</p></li>
+<li><p><strong>System Errors</strong>: Graceful degradation and error pages</p></li>
+</ol>
+</section>
+<section id="performance-considerations">
+<h2>Performance Considerations<a class="headerlink" href="#performance-considerations" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Caching</strong>: Results cached in memory during sessions</p></li>
+<li><p><strong>Pagination</strong>: Large result sets paginated for performance</p></li>
+<li><p><strong>Indexing</strong>: Database indexes on frequently queried columns</p></li>
+<li><p><strong>Connection Pooling</strong>: Reuse database connections</p></li>
+<li><p><strong>Async Operations</strong>: Background threads for long-running tasks</p></li>
+</ul>
+</section>
+<section id="security-considerations">
+<h2>Security Considerations<a class="headerlink" href="#security-considerations" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>SQL Injection Prevention</strong>: Parameterized queries</p></li>
+<li><p><strong>Input Validation</strong>: Sanitize all user inputs</p></li>
+<li><p><strong>Rate Limiting</strong>: Prevent abuse of scraping endpoints</p></li>
+<li><p><strong>Error Messages</strong>: Avoid exposing sensitive information</p></li>
+<li><p><strong>Database Credentials</strong>: Environment variables for secrets</p></li>
+</ul>
+</section>
+<section id="scalability">
+<h2>Scalability<a class="headerlink" href="#scalability" title="Link to this heading"></a></h2>
+<p>The architecture supports horizontal scaling:</p>
+<ul class="simple">
+<li><p><strong>Stateless Web Layer</strong>: Can run multiple Flask instances</p></li>
+<li><p><strong>Database Scaling</strong>: PostgreSQL supports read replicas</p></li>
+<li><p><strong>ETL Parallelization</strong>: Can run multiple scrapers</p></li>
+<li><p><strong>Load Balancing</strong>: Nginx or similar for distribution</p></li>
+</ul>
+</section>
+<section id="future-enhancements">
+<h2>Future Enhancements<a class="headerlink" href="#future-enhancements" title="Link to this heading"></a></h2>
+<p>Potential architectural improvements:</p>
+<ul class="simple">
+<li><p><strong>Message Queue</strong>: Add Redis/RabbitMQ for job processing</p></li>
+<li><p><strong>Caching Layer</strong>: Add Redis for result caching</p></li>
+<li><p><strong>API Gateway</strong>: Centralized API management</p></li>
+<li><p><strong>Microservices</strong>: Split into smaller services</p></li>
+<li><p><strong>Container Orchestration</strong>: Kubernetes deployment</p></li>
+<li><p><strong>Monitoring</strong>: Add Prometheus/Grafana stack</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="usage.html" class="btn btn-neutral float-left" title="Usage Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Wei Liu.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

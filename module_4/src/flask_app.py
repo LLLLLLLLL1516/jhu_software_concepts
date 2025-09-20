@@ -32,7 +32,22 @@ scraping_status = {
 }
 
 def create_app(config=None, db_config=None, scraper=None):
-    """Application factory function"""
+    """
+    Application factory function.
+
+    Creates and configures the Flask application, sets up database configuration,
+    and registers routes. Supports dependency injection of a scraper for testing.
+
+    :param config: Flask configuration dictionary to apply to the app.
+    :type config: dict | None
+    :param db_config: Database connection config (host, port, dbname, user, password).
+                      If not provided, uses ``DATABASE_URL`` or DEFAULT_DB_CONFIG.
+    :type db_config: dict | None
+    :param scraper: Optional scraper object with a ``scrape()`` method (for tests).
+    :type scraper: object | None
+    :return: Configured Flask application instance.
+    :rtype: Flask
+    """
     app = Flask(__name__)
     
     # Apply configuration
@@ -60,7 +75,12 @@ def create_app(config=None, db_config=None, scraper=None):
     app.scraper = scraper
 
     def get_db_connection():
-        """Get database connection"""
+        """
+        Create a new database connection using app configuration.
+
+        :return: A new psycopg connection object or None on error.
+        :rtype: psycopg.Connection | None
+        """
         try:
             conn = psycopg.connect(**app.db_config)
             return conn
@@ -69,7 +89,23 @@ def create_app(config=None, db_config=None, scraper=None):
             return None
 
     def run_data_pipeline():
-        """Run the complete data pipeline: scrape -> clean -> LLM -> load"""
+        """
+        Run the complete data pipeline (scrape → clean → LLM → load).
+
+        If a scraper object is injected (for testing), it will be used and the pipeline
+        will short-circuit after the scraper step. Otherwise, this function calls
+        local scripts via subprocess in sequence:
+          1) incremental_scraper.py
+          2) clean.py
+          3) llm_hosting/app.py (LLM standardization)
+          4) load_new_data_to_database(...)
+
+        Updates the global ``scraping_status`` with progress, errors, and completion time.
+
+        :return: None
+        :rtype: None
+        :raises Exception: If any pipeline step fails, the error is recorded in status and re-raised internally.
+        """
         global scraping_status
         
         print(f"[DEBUG] Starting data pipeline in thread {threading.current_thread().name}")
@@ -170,7 +206,18 @@ def create_app(config=None, db_config=None, scraper=None):
             print("[DEBUG] Data pipeline thread finished")
 
     def load_new_data_to_database(filename: str) -> int:
-        """Load new data from JSONL file into database"""
+        """
+        Load new data from a JSONL file into the database.
+
+        Uses :class:`load_data.GradCafeDataLoader` to load rows and computes the
+        number of newly added records by comparing counts before/after.
+
+        :param filename: Path to the JSONL file produced by the LLM step.
+        :type filename: str
+        :return: Number of new rows added to ``applicant_data``.
+        :rtype: int
+        :raises Exception: If database connection or loading fails.
+        """
         try:
             # Import the data loader functionality
             from load_data import GradCafeDataLoader
@@ -208,7 +255,16 @@ def create_app(config=None, db_config=None, scraper=None):
     @app.route('/')
     @app.route('/analysis')
     def index():
-        """Main analysis page displaying query results"""
+        """
+        Render the main analysis page.
+
+        Connects to the database, executes analysis queries via
+        :class:`query_data.GradCafeQueryAnalyzer`, fetches basic DB stats, and
+        renders the ``index.html`` template with results.
+
+        :return: Rendered HTML for the analysis page.
+        :rtype: str
+        """
         try:
             # Get all query results
             analyzer = GradCafeQueryAnalyzer(app.db_config)
@@ -245,7 +301,16 @@ def create_app(config=None, db_config=None, scraper=None):
 
     @app.route('/pull-data', methods=['POST'])
     def pull_data():
-        """Endpoint to trigger data pulling"""
+        """
+        Trigger the background data pipeline (scrape → clean → LLM → load).
+
+        If a pipeline is already running, responds with HTTP 409 and
+        ``{"busy": true}``. Otherwise, starts a background thread and returns
+        HTTP 202 with ``{"ok": true}``.
+
+        :return: JSON status and HTTP status code.
+        :rtype: flask.Response
+        """
         global scraping_status
         
         if scraping_status['is_running']:
@@ -260,7 +325,16 @@ def create_app(config=None, db_config=None, scraper=None):
 
     @app.route('/update-analysis', methods=['POST'])
     def update_analysis():
-        """Endpoint to refresh analysis results"""
+        """
+        Refresh analysis results (fast path).
+
+        If the data pipeline is currently running, responds with HTTP 409 and
+        ``{"busy": true}``. Otherwise, returns 200 with ``{"ok": true}``.
+        This endpoint is intended for lightweight refresh of cached analysis.
+
+        :return: JSON status and HTTP status code.
+        :rtype: flask.Response
+        """
         global scraping_status
         
         if scraping_status['is_running']:
@@ -270,15 +344,37 @@ def create_app(config=None, db_config=None, scraper=None):
 
     @app.route('/status')
     def get_status():
-        """Get current scraping status"""
+        """
+        Return current scraping status as JSON.
+
+        :return: Dictionary with keys: ``is_running``, ``progress``,
+                 ``last_update``, ``error``.
+        :rtype: flask.Response
+        """
         return jsonify(scraping_status)
 
     @app.errorhandler(404)
     def not_found(error):
+        """
+        Handle 404 Not Found errors.
+
+        :param error: Flask error object.
+        :type error: Exception
+        :return: Rendered error page and HTTP 404.
+        :rtype: tuple[str, int]
+        """
         return render_template('error.html', error="Page not found"), 404
 
     @app.errorhandler(500)
     def internal_error(error):
+        """
+        Handle 500 Internal Server Error.
+
+        :param error: Flask error object.
+        :type error: Exception
+        :return: Rendered error page and HTTP 500.
+        :rtype: tuple[str, int]
+        """
         return render_template('error.html', error="Internal server error"), 500
     
     return app

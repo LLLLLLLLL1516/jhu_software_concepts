@@ -128,3 +128,41 @@
 2025-09-13 21:27:08,133 - INFO - 127.0.0.1 - - [13/Sep/2025 21:27:08] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
 2025-09-13 21:27:08,135 - INFO - 127.0.0.1 - - [13/Sep/2025 21:27:08] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
 2025-09-13 21:54:30,844 - INFO -  * Detected change in '/Users/momo/Documents/JHU_MSAI/EN.605.256.8VL.FA25/jhu_software_concepts/module_3/query_data.py', reloading
+2025-09-15 21:49:40,731 - INFO - Successfully connected to PostgreSQL database
+2025-09-15 21:49:40,751 - INFO - Starting to load data from new_llm_extend_applicant_data.jsonl
+2025-09-15 21:49:40,756 - INFO - Data loading completed. Total records processed: 4, Successfully inserted: 4
+2025-09-15 21:49:40,774 - INFO - Database connection closed
+2025-09-15 21:49:47,893 - INFO - 127.0.0.1 - - [15/Sep/2025 21:49:47] "GET / HTTP/1.1" 200 -
+2025-09-15 21:49:47,917 - INFO - 127.0.0.1 - - [15/Sep/2025 21:49:47] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-15 21:49:47,918 - INFO - 127.0.0.1 - - [15/Sep/2025 21:49:47] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+2025-09-15 21:49:49,211 - INFO - 127.0.0.1 - - [15/Sep/2025 21:49:49] "[35m[1mPOST /pull-data HTTP/1.1[0m" 202 -
+2025-09-15 21:50:02,951 - INFO - 127.0.0.1 - - [15/Sep/2025 21:50:02] "POST /update-analysis HTTP/1.1" 200 -
+2025-09-15 21:50:12,857 - INFO - 127.0.0.1 - - [15/Sep/2025 21:50:12] "[35m[1mPOST /pull-data HTTP/1.1[0m" 202 -
+2025-09-15 21:50:25,419 - INFO - 127.0.0.1 - - [15/Sep/2025 21:50:25] "[35m[1mPOST /pull-data HTTP/1.1[0m" 202 -
+2025-09-15 21:50:30,107 - INFO - 127.0.0.1 - - [15/Sep/2025 21:50:30] "POST /update-analysis HTTP/1.1" 200 -
+2025-09-15 21:50:32,490 - INFO - 127.0.0.1 - - [15/Sep/2025 21:50:32] "GET / HTTP/1.1" 200 -
+2025-09-15 21:50:32,509 - INFO - 127.0.0.1 - - [15/Sep/2025 21:50:32] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-15 21:50:32,510 - INFO - 127.0.0.1 - - [15/Sep/2025 21:50:32] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+2025-09-15 21:50:34,653 - INFO - 127.0.0.1 - - [15/Sep/2025 21:50:34] "POST /update-analysis HTTP/1.1" 200 -
+2025-09-16 16:36:49,668 - INFO - Successfully connected to PostgreSQL database
+2025-09-16 16:36:49,690 - INFO - Starting to load data from /Users/momo/Documents/JHU_MSAI/EN.605.256.8VL.FA25/jhu_software_concepts/module_4/src/new_llm_extend_applicant_data.jsonl
+2025-09-16 16:36:49,696 - INFO - Data loading completed. Total records processed: 1, Successfully inserted: 1
+2025-09-16 16:36:49,714 - INFO - Database connection closed
+2025-09-16 16:36:54,001 - INFO - 127.0.0.1 - - [16/Sep/2025 16:36:54] "GET / HTTP/1.1" 200 -
+2025-09-16 16:36:54,022 - INFO - 127.0.0.1 - - [16/Sep/2025 16:36:54] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-16 16:36:54,022 - INFO - 127.0.0.1 - - [16/Sep/2025 16:36:54] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+2025-09-16 20:06:36,098 - INFO - 192.168.1.1 - - [16/Sep/2025 20:06:36] "GET / HTTP/1.1" 200 -
+2025-09-18 08:44:49,266 - INFO - Successfully connected to PostgreSQL database
+2025-09-18 08:44:49,287 - INFO - Starting to load data from /Users/momo/Documents/JHU_MSAI/EN.605.256.8VL.FA25/jhu_software_concepts/module_4/src/new_llm_extend_applicant_data.jsonl
+2025-09-18 08:44:49,292 - INFO - Data loading completed. Total records processed: 2, Successfully inserted: 2
+2025-09-18 08:44:49,310 - INFO - Database connection closed
+2025-09-18 08:44:51,098 - INFO - 127.0.0.1 - - [18/Sep/2025 08:44:51] "GET / HTTP/1.1" 200 -
+2025-09-18 08:44:51,119 - INFO - 127.0.0.1 - - [18/Sep/2025 08:44:51] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-18 08:44:51,120 - INFO - 127.0.0.1 - - [18/Sep/2025 08:44:51] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+2025-09-18 08:44:55,941 - INFO - 127.0.0.1 - - [18/Sep/2025 08:44:55] "POST /update-analysis HTTP/1.1" 200 -
+2025-09-18 08:44:56,274 - INFO - 127.0.0.1 - - [18/Sep/2025 08:44:56] "GET / HTTP/1.1" 200 -
+2025-09-18 08:44:56,292 - INFO - 127.0.0.1 - - [18/Sep/2025 08:44:56] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-18 08:44:56,293 - INFO - 127.0.0.1 - - [18/Sep/2025 08:44:56] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+2025-09-18 14:06:21,242 - INFO - 192.168.1.1 - - [18/Sep/2025 14:06:21] "GET / HTTP/1.1" 200 -
+2025-09-18 18:34:57,968 - INFO - 127.0.0.1 - - [18/Sep/2025 18:34:57] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-09-18 18:34:57,990 - INFO - 127.0.0.1 - - [18/Sep/2025 18:34:57] "[33mGET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1[0m" 404 -

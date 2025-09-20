@@ -60,15 +60,31 @@ CREATE TABLE IF NOT EXISTS applicant_data (
 """
 
 class GradCafeDataLoader:
-    """Class to handle loading grad café data into PostgreSQL"""
+    """
+    Handle loading Grad Café data into PostgreSQL.
+
+    Provides connection management, table creation, record transformation,
+    batch inserts from JSONL, and table statistics.
+    """
     
     def __init__(self, db_config: Dict[str, Any]):
-        """Initialize the data loader with database configuration"""
+        """
+        Initialize the data loader.
+
+        :param db_config: Database configuration dictionary containing keys
+                          ``host``, ``port``, ``dbname``, ``user``, ``password``.
+        :type db_config: dict
+        """
         self.db_config = db_config
         self.connection = None
         
     def connect_to_database(self) -> bool:
-        """Establish connection to PostgreSQL database"""
+        """
+        Establish a connection to the PostgreSQL database.
+
+        :return: True if connected successfully, otherwise False.
+        :rtype: bool
+        """
         try:
             self.connection = psycopg.connect(**self.db_config)
             logger.info("Successfully connected to PostgreSQL database")
@@ -78,7 +94,12 @@ class GradCafeDataLoader:
             return False
     
     def create_table(self) -> bool:
-        """Create the applicant_data table if it doesn't exist"""
+        """
+        Create the ``applicant_data`` table if it does not exist.
+
+        :return: True if the table exists or was created successfully, False on error.
+        :rtype: bool
+        """
         try:
             with self.connection.cursor() as cursor:
                 cursor.execute(CREATE_TABLE_SQL)
@@ -90,7 +111,16 @@ class GradCafeDataLoader:
             return False
     
     def parse_date(self, date_string: str) -> Optional[datetime]:
-        """Parse date string into datetime object"""
+        """
+        Parse a date string into a ``date`` value.
+
+        Uses ``dateutil.parser.parse`` to accept multiple formats.
+
+        :param date_string: Date string to parse (e.g., ``"2024-01-15"``).
+        :type date_string: str
+        :return: Parsed date value, or None if parsing fails/empty.
+        :rtype: Optional[datetime.date]
+        """
         if not date_string:
             return None
         
@@ -102,7 +132,14 @@ class GradCafeDataLoader:
             return None
     
     def parse_float(self, value: Any) -> Optional[float]:
-        """Parse value into float, handling None and string values"""
+        """
+        Convert a value to a float if possible.
+
+        :param value: Numeric/str value to convert (e.g., ``"3.85"``).
+        :type value: Any
+        :return: Float value or None if conversion fails/empty.
+        :rtype: Optional[float]
+        """
         if value is None or value == '':
             return None
         
@@ -113,7 +150,17 @@ class GradCafeDataLoader:
             return None
     
     def transform_record(self, record: Dict[str, Any]) -> Tuple[Any, ...]:
-        """Transform a JSONL record into database format"""
+        """
+        Transform a JSONL record into a tuple matching the DB schema.
+
+        Maps JSON fields to columns of ``applicant_data`` and applies parsing for
+        date/float fields.
+
+        :param record: A single JSON object (one line from the JSONL file).
+        :type record: dict
+        :return: Tuple of values in the order expected by the insert statement.
+        :rtype: tuple
+        """
         # Map JSONL fields to database schema
         program = record.get('program', '')
         comments = record.get('comments', '')
@@ -137,7 +184,20 @@ class GradCafeDataLoader:
         )
     
     def load_data_from_jsonl(self, file_path: str, batch_size: int = 1000) -> bool:
-        """Load data from JSONL file into database"""
+        """
+        Load data lines from a JSONL file and insert into the database in batches.
+
+        Each line is parsed as JSON, transformed to match the DB schema, and inserted
+        using ``executemany`` in chunks.
+
+        :param file_path: Path to the input JSONL file.
+        :type file_path: str
+        :param batch_size: Number of rows per batch insert (default: 1000).
+        :type batch_size: int
+        :return: True if at least one record was inserted, False otherwise.
+        :rtype: bool
+        :raises FileNotFoundError: If the input file does not exist.
+        """
         try:
             insert_sql = """
             INSERT INTO applicant_data (
@@ -199,7 +259,16 @@ class GradCafeDataLoader:
             return False
     
     def _insert_batch(self, insert_sql: str, batch_data: List[Tuple]) -> int:
-        """Insert a batch of records into the database"""
+        """
+        Insert a batch of records into the database.
+
+        :param insert_sql: Parameterized INSERT SQL statement.
+        :type insert_sql: str
+        :param batch_data: List of tuples to insert.
+        :type batch_data: list[tuple]
+        :return: Number of records inserted (len(batch_data)) on success, 0 on failure.
+        :rtype: int
+        """
         try:
             with self.connection.cursor() as cursor:
                 cursor.executemany(insert_sql, batch_data)
@@ -211,7 +280,16 @@ class GradCafeDataLoader:
             return 0
     
     def get_table_stats(self) -> Dict[str, Any]:
-        """Get statistics about the loaded data"""
+        """
+        Compute basic statistics for the ``applicant_data`` table.
+
+        Statistics include total row count, per-status distribution, and per-degree
+        distribution (non-empty values only).
+
+        :return: Dictionary with statistics keys: ``total_records``,
+                 ``status_distribution``, ``degree_distribution``.
+        :rtype: dict
+        """
         try:
             with self.connection.cursor() as cursor:
                 # Total count
@@ -248,13 +326,29 @@ class GradCafeDataLoader:
             return {}
     
     def close_connection(self):
-        """Close database connection"""
+        """
+        Close the database connection.
+
+        :return: None
+        :rtype: None
+        """
         if self.connection:
             self.connection.close()
             logger.info("Database connection closed")
 
 def main():
-    """Main function to execute the data loading process"""
+    """
+    Execute the data loading process from the command line.
+
+    Steps:
+      1) Connect to the database
+      2) Create the target table if needed
+      3) Load JSONL data with batch inserts
+      4) Print basic statistics
+
+    :return: True if the load succeeded, False otherwise.
+    :rtype: bool
+    """
     import argparse
     
     # Add command line argument support

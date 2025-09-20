@@ -16,9 +16,20 @@ import urllib.robotparser
 
 
 class GradCafeListScraper:
-    """Web scraper for Grad Cafe admission results using list view"""
+    """
+    Web scraper for Grad Café admission results using the list view.
+
+    Provides HTTP fetching with retries/backoff, robots.txt checking, HTML parsing
+    to structured dictionaries, pagination handling, and JSON export.
+    """
     
     def __init__(self, email: str = "wliu125@jh.edu"):
+        """
+        Initialize the list-view scraper.
+
+        :param email: Contact email to include in the User-Agent for responsible scraping.
+        :type email: str
+        """
         self.http = urllib3.PoolManager()
         self.base_url = "https://www.thegradcafe.com"
         self.results_url = "https://www.thegradcafe.com/survey/index.php"
@@ -30,7 +41,12 @@ class GradCafeListScraper:
         self._check_robots_txt()
         
     def _check_robots_txt(self) -> bool:
-        """Check robots.txt compliance programmatically"""
+        """
+        Programmatically check robots.txt compliance.
+
+        :return: True if fetching the results URL is permitted for this user agent, False otherwise.
+        :rtype: bool
+        """
         try:
             rp = urllib.robotparser.RobotFileParser()
             rp.set_url(f"{self.base_url}/robots.txt")
@@ -50,7 +66,20 @@ class GradCafeListScraper:
             return True
     
     def _make_request(self, url: str, params: Optional[Dict] = None, retry_count: int = 3) -> Optional[str]:
-        """Make HTTP request with error handling, rate limiting, and retries"""
+        """
+        Make an HTTP GET request with error handling, rate limiting, and retries.
+
+        Uses exponential backoff for 429 and 5xx responses.
+
+        :param url: Base URL to request.
+        :type url: str
+        :param params: Optional querystring parameters to append.
+        :type params: dict | None
+        :param retry_count: Maximum number of retry attempts.
+        :type retry_count: int
+        :return: Response body as UTF-8 string, or None on failure.
+        :rtype: str | None
+        """
         if params:
             query_string = urlencode(params)
             url = f"{url}?{query_string}"
@@ -91,7 +120,14 @@ class GradCafeListScraper:
         return None
     
     def _extract_semester(self, row_element) -> Optional[str]:
-        """Extract semester/year from badge elements (e.g., Fall 2026, Spring 2026)"""
+        """
+        Extract a semester string from a row (e.g., ``"Fall 2026"``).
+
+        :param row_element: BeautifulSoup element for the table row.
+        :type row_element: bs4.element.Tag
+        :return: Semester string if found, else None.
+        :rtype: str | None
+        """
         # Look for semester badges (usually orange/colored badges)
         badges = row_element.find_all(['span', 'div'], class_=re.compile(r'badge|label|tag', re.I))
         
@@ -110,7 +146,18 @@ class GradCafeListScraper:
         return None
     
     def _extract_status_info(self, row_element) -> Dict[str, Optional[str]]:
-        """Extract acceptance status and date"""
+        """
+        Extract acceptance status and date from a row.
+
+        Recognizes patterns like: ``Accepted on 1 Sep``, ``Rejected on 2 Sep``,
+        ``Interview on 15 Mar``, and ``Wait listed on 6 Feb`` (normalized to
+        ``Waitlisted``).
+
+        :param row_element: BeautifulSoup element for the table row.
+        :type row_element: bs4.element.Tag
+        :return: Dict with keys ``status`` and ``status_date``.
+        :rtype: dict
+        """
         status_info = {
             'status': None,
             'status_date': None
@@ -147,47 +194,20 @@ class GradCafeListScraper:
         
         return status_info
     
-    # def _extract_scores(self, row_element) -> Dict[str, Optional[str]]:
-    #     """Extract GPA and GRE scores from the row"""
-    #     scores = {
-    #         'gpa': None,
-    #         'gre_total': None,
-    #         'gre_verbal': None,
-    #         'gre_quant': None,
-    #         'gre_aw': None
-    #     }
-        
-    #     text = row_element.get_text()
-        
-    #     # Extract GPA (e.g., "GPA 3.22", "GPA: 3.90")
-    #     gpa_match = re.search(r'GPA\s*:?\s*(\d+\.\d+)', text, re.I)
-    #     if gpa_match:
-    #         scores['gpa'] = gpa_match.group(1)
-        
-    #     # Extract GRE Total (e.g., "GRE 331", "GRE: 320")
-    #     gre_total_match = re.search(r'GRE\s*:?\s*(\d{3})\b', text, re.I)
-    #     if gre_total_match:
-    #         scores['gre_total'] = gre_total_match.group(1)
-        
-    #     # Extract GRE Verbal (e.g., "GRE V 165", "V: 160")
-    #     gre_v_match = re.search(r'(?:GRE\s*)?V(?:erbal)?\s*:?\s*(\d{3})\b', text, re.I)
-    #     if gre_v_match:
-    #         scores['gre_verbal'] = gre_v_match.group(1)
-        
-    #     # Extract GRE Quant (e.g., "GRE Q 170", "Q: 165")
-    #     gre_q_match = re.search(r'(?:GRE\s*)?Q(?:uant)?\s*:?\s*(\d{3})\b', text, re.I)
-    #     if gre_q_match:
-    #         scores['gre_quant'] = gre_q_match.group(1)
-        
-    #     # Extract GRE AW (e.g., "GRE AW 4.5", "AW: 5.0")
-    #     gre_aw_match = re.search(r'(?:GRE\s*)?AW\s*:?\s*(\d+(?:\.\d+)?)\b', text, re.I)
-    #     if gre_aw_match:
-    #         scores['gre_aw'] = gre_aw_match.group(1)
-        
-    #     return scores
     
     def _parse_list_entry(self, main_row, detail_row=None, comment_row=None) -> Optional[Dict[str, Any]]:
-        """Parse a complete entry from the list view (main row + detail row + optional comment)"""
+        """
+        Parse one logical entry from the list (main row + detail row + optional comment row).
+
+        :param main_row: Main table row containing school, program, date, status columns.
+        :type main_row: bs4.element.Tag
+        :param detail_row: Optional detail row with badges (semester, GRE, GPA, etc.).
+        :type detail_row: bs4.element.Tag | None
+        :param comment_row: Optional comment row.
+        :type comment_row: bs4.element.Tag | None
+        :return: Parsed entry as a dictionary or None if the row structure is invalid.
+        :rtype: dict | None
+        """
         try:
             result = {}
             
@@ -336,7 +356,14 @@ class GradCafeListScraper:
             return None
     
     def _parse_list_page(self, html: str) -> List[Dict[str, Any]]:
-        """Parse a list page and extract all admission results"""
+        """
+        Parse a full list page, returning all admission results found.
+
+        :param html: HTML content of the list page.
+        :type html: str
+        :return: List of parsed entry dictionaries.
+        :rtype: list[dict]
+        """
         soup = BeautifulSoup(html, "html.parser")
         results = []
         
@@ -403,7 +430,15 @@ class GradCafeListScraper:
         return results
     
     def _get_total_pages(self) -> int:
-        """Determine the total number of pages available"""
+        """
+        Determine the total number of available pages.
+
+        Attempts to parse pagination UI or "Page X of Y" text; falls back to a high
+        sentinel value if undeterminable.
+
+        :return: Total number of pages, or a conservative upper bound if unknown.
+        :rtype: int
+        """
         try:
             html = self._make_request(self.results_url)
             if not html:
@@ -435,14 +470,17 @@ class GradCafeListScraper:
     
     def scrape_data(self, max_pages: int = None, target_entries: int = 30000) -> List[Dict[str, Any]]:
         """
-        Main scraping method to collect grad cafe data from list view
-        
-        Args:
-            max_pages: Maximum number of pages to scrape (None for auto-detect)
-            target_entries: Target number of entries to collect
-            
-        Returns:
-            List of scraped admission results
+        Scrape list-view pages until reaching ``max_pages`` or ``target_entries``.
+
+        Respects a small delay between page requests. Stores full results in
+        :pyattr:`scraped_data` and returns them.
+
+        :param max_pages: Maximum pages to scrape (``None`` auto-detects and caps to 1500).
+        :type max_pages: int | None
+        :param target_entries: Target number of entries to collect before stopping.
+        :type target_entries: int
+        :return: All parsed results collected.
+        :rtype: list[dict]
         """
         print("Starting Grad Cafe list view scraping...")
         print(f"Target: {target_entries} entries")
@@ -503,7 +541,14 @@ class GradCafeListScraper:
         return all_results
     
     def save_data(self, filename: str = "applicant_data_list.json") -> None:
-        """Save scraped data to JSON file"""
+        """
+        Save scraped data to a JSON file.
+
+        :param filename: Output filename for the JSON array.
+        :type filename: str
+        :return: None
+        :rtype: None
+        """
         try:
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(self.scraped_data, f, indent=2, ensure_ascii=False)
@@ -511,20 +556,17 @@ class GradCafeListScraper:
         except Exception as e:
             print(f"Error saving data: {e}")
     
-    # def load_data(self, filename: str = "applicant_data_list.json") -> List[Dict[str, Any]]:
-    #     """Load data from JSON file"""
-    #     try:
-    #         with open(filename, 'r', encoding='utf-8') as f:
-    #             self.scraped_data = json.load(f)
-    #         print(f"Data loaded from {filename}: {len(self.scraped_data)} entries")
-    #         return self.scraped_data
-    #     except Exception as e:
-    #         print(f"Error loading data: {e}")
-    #         return []
 
 
 def main():
-    """Main function to run the list view scraper"""
+    """
+    Command-line entry point for the list-view scraper.
+
+    Scrapes up to the configured limits and writes the final JSON file.
+
+    :return: None
+    :rtype: None
+    """
     # Initialize scraper with proper email for identification
     scraper = GradCafeListScraper(email="wei.liu125@jh.edu")
     

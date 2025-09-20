@@ -31,15 +31,34 @@ DB_CONFIG = {
 }
 
 class IncrementalGradCafeScraper(GradCafeListScraper):
-    """Extended scraper that only collects new data based on database timestamps"""
+    """
+    Extended scraper that only collects new data based on database timestamps.
+
+    Inherits from :class:`scrape.GradCafeListScraper` and adds logic to:
+    1) read the latest `date_added` in the DB, and
+    2) scrape list pages until no newer entries are found.
+    """
     
     def __init__(self, email: str = "wliu125@jh.edu", db_config: Dict = None):
+        """
+        Initialize the incremental scraper.
+
+        :param email: Contact email used for polite scraping.
+        :type email: str
+        :param db_config: Database connection parameters; if omitted, defaults to ``DB_CONFIG``.
+        :type db_config: dict | None
+        """
         super().__init__(email)
         self.db_config = db_config or DB_CONFIG
         self.latest_db_date = None
         
     def get_latest_database_date(self) -> Optional[date]:
-        """Get the most recent date_added from the database"""
+        """
+        Get the most recent ``date_added`` from the database.
+
+        :return: Latest date stored in the DB, or ``None`` if not available.
+        :rtype: Optional[date]
+        """
         try:
             connection = psycopg.connect(**self.db_config)
             with connection.cursor() as cursor:
@@ -61,7 +80,20 @@ class IncrementalGradCafeScraper(GradCafeListScraper):
             return None
     
     def is_entry_newer(self, entry_date_str: str, cutoff_date: date) -> bool:
-        """Check if an entry's date is newer than the cutoff date"""
+        """
+        Check if an entry's date is strictly newer than the cutoff date.
+
+        Tries multiple date formats commonly seen on Grad Café (e.g., "September 06, 2025",
+        "Sep 6, 2025", "9/6/2025", "2025-09-06"). If parsing fails, returns True (fail-open)
+        so possible new items are not missed.
+
+        :param entry_date_str: Date string from the scraped entry.
+        :type entry_date_str: str
+        :param cutoff_date: Latest date stored in the DB.
+        :type cutoff_date: date
+        :return: True if the entry is newer, else False. If parsing fails, returns True.
+        :rtype: bool
+        """
         if not entry_date_str or not cutoff_date:
             return True  # Include if we can't determine
         
@@ -87,13 +119,16 @@ class IncrementalGradCafeScraper(GradCafeListScraper):
     
     def scrape_new_data_only(self, max_pages: int = 100) -> List[Dict[str, Any]]:
         """
-        Scrape only new data that's not already in the database
-        
-        Args:
-            max_pages: Maximum number of pages to check for new data
-            
-        Returns:
-            List of new admission results
+        Scrape only entries newer than the latest date found in the database.
+
+        Iterates list pages (up to ``max_pages``), parses entries, and filters out
+        those whose ``date_added`` is not strictly newer than the DB's latest date.
+        Stops early after several consecutive pages produce no new results.
+
+        :param max_pages: Maximum number of list pages to scan.
+        :type max_pages: int
+        :return: List of new admission result entries.
+        :rtype: list[dict]
         """
         print("Starting incremental Grad Cafe scraping...")
         
@@ -166,7 +201,17 @@ class IncrementalGradCafeScraper(GradCafeListScraper):
         return new_results
     
     def save_new_data(self, new_data: List[Dict[str, Any]], filename: str = "new_applicant_data.json") -> None:
-        """Save only the new scraped data to JSON file"""
+        """
+        Save new scraped data entries to a JSON file.
+
+        :param new_data: New entries to persist.
+        :type new_data: list[dict]
+        :param filename: Output file path (default: ``"new_applicant_data.json"``).
+        :type filename: str
+        :return: None
+        :rtype: None
+        :raises OSError: If file writing fails.
+        """
         try:
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(new_data, f, indent=2, ensure_ascii=False)
@@ -175,7 +220,18 @@ class IncrementalGradCafeScraper(GradCafeListScraper):
             print(f"Error saving new data: {e}")
 
 def main():
-    """Main function to run incremental scraping"""
+    """
+    Main function to run incremental scraping from the command line.
+
+    Steps:
+      1) Initialize :class:`IncrementalGradCafeScraper`
+      2) Scrape only new data with :meth:`scrape_new_data_only`
+      3) Save results to ``new_applicant_data.json``
+      4) Print a short summary preview
+
+    :return: Number of new entries found.
+    :rtype: int
+    """
     print("=" * 60)
     print("Incremental Grad Cafe Scraper")
     print("=" * 60)

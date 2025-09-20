@@ -1,0 +1,307 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage Guide &mdash; GradCafe Data Analysis 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Architecture Overview" href="architecture.html" />
+    <link rel="prev" title="Installation Guide" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            GradCafe Data Analysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="modules.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#detailed-usage">Detailed Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#web-scraping">Web Scraping</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#data-cleaning">Data Cleaning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#database-operations">Database Operations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#query-analysis">Query Analysis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#incremental-updates">Incremental Updates</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#flask-web-application">Flask Web Application</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#command-line-interface">Command Line Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#database-configuration">Database Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scraping-configuration">Scraping Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#best-practices">Best Practices</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">GradCafe Data Analysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Usage Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/usage.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="usage-guide">
+<h1>Usage Guide<a class="headerlink" href="#usage-guide" title="Link to this heading"></a></h1>
+<p>This guide explains how to use the GradCafe Data Analysis system.</p>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p><strong>Scrape Data from GradCafe</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>src/scrape.py
+</pre></div>
+</div>
+<p>This will collect admission data from GradCafe and save it to <code class="docutils literal notranslate"><span class="pre">applicant_data.json</span></code>.</p>
+</li>
+<li><p><strong>Clean the Data</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>src/clean.py
+</pre></div>
+</div>
+<p>This processes raw data and creates <code class="docutils literal notranslate"><span class="pre">cleaned_applicant_data.json</span></code>.</p>
+</li>
+<li><p><strong>Load Data into Database</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>src/load_data.py
+</pre></div>
+</div>
+<p>This loads cleaned data into PostgreSQL database.</p>
+</li>
+<li><p><strong>Run Analytics Queries</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>src/query_data.py
+</pre></div>
+</div>
+<p>This executes predefined SQL queries for admission insights.</p>
+</li>
+<li><p><strong>Start Web Application</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>src/flask_app.py
+</pre></div>
+</div>
+<p>Access the application at <code class="docutils literal notranslate"><span class="pre">http://localhost:8080</span></code>.</p>
+</li>
+</ol>
+</section>
+<section id="detailed-usage">
+<h2>Detailed Usage<a class="headerlink" href="#detailed-usage" title="Link to this heading"></a></h2>
+<section id="web-scraping">
+<h3>Web Scraping<a class="headerlink" href="#web-scraping" title="Link to this heading"></a></h3>
+<p>The scraper respects robots.txt and implements polite scraping:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">scrape</span> <span class="kn">import</span> <span class="n">GradCafeListScraper</span>
+
+<span class="n">scraper</span> <span class="o">=</span> <span class="n">GradCafeListScraper</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="s2">&quot;your_email@example.com&quot;</span><span class="p">)</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">scraper</span><span class="o">.</span><span class="n">scrape_all_pages</span><span class="p">(</span><span class="n">max_pages</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">scraper</span><span class="o">.</span><span class="n">save_to_json</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="s2">&quot;output.json&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="data-cleaning">
+<h3>Data Cleaning<a class="headerlink" href="#data-cleaning" title="Link to this heading"></a></h3>
+<p>Clean and standardize admission data:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">clean</span> <span class="kn">import</span> <span class="n">GradCafeDataCleaner</span>
+
+<span class="n">cleaner</span> <span class="o">=</span> <span class="n">GradCafeDataCleaner</span><span class="p">(</span><span class="s2">&quot;raw_data.json&quot;</span><span class="p">)</span>
+<span class="n">cleaner</span><span class="o">.</span><span class="n">load_data</span><span class="p">()</span>
+<span class="n">cleaner</span><span class="o">.</span><span class="n">clean_all_data</span><span class="p">()</span>
+<span class="n">cleaner</span><span class="o">.</span><span class="n">save_cleaned_data</span><span class="p">(</span><span class="s2">&quot;cleaned_data.json&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="database-operations">
+<h3>Database Operations<a class="headerlink" href="#database-operations" title="Link to this heading"></a></h3>
+<p>Load data into PostgreSQL:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">load_data</span> <span class="kn">import</span> <span class="n">GradCafeDataLoader</span>
+
+<span class="n">loader</span> <span class="o">=</span> <span class="n">GradCafeDataLoader</span><span class="p">(</span><span class="n">db_config</span><span class="p">)</span>
+<span class="n">loader</span><span class="o">.</span><span class="n">connect_to_database</span><span class="p">()</span>
+<span class="n">loader</span><span class="o">.</span><span class="n">create_table</span><span class="p">()</span>
+<span class="n">loader</span><span class="o">.</span><span class="n">load_json_data</span><span class="p">(</span><span class="s2">&quot;cleaned_data.json&quot;</span><span class="p">)</span>
+<span class="n">loader</span><span class="o">.</span><span class="n">insert_data</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="query-analysis">
+<h3>Query Analysis<a class="headerlink" href="#query-analysis" title="Link to this heading"></a></h3>
+<p>Run analytical queries:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">query_data</span> <span class="kn">import</span> <span class="n">GradCafeQueryAnalyzer</span>
+
+<span class="n">analyzer</span> <span class="o">=</span> <span class="n">GradCafeQueryAnalyzer</span><span class="p">(</span><span class="n">db_config</span><span class="p">)</span>
+<span class="n">analyzer</span><span class="o">.</span><span class="n">connect_to_database</span><span class="p">()</span>
+<span class="n">analyzer</span><span class="o">.</span><span class="n">run_all_queries</span><span class="p">()</span>
+<span class="n">analyzer</span><span class="o">.</span><span class="n">print_summary_report</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="incremental-updates">
+<h3>Incremental Updates<a class="headerlink" href="#incremental-updates" title="Link to this heading"></a></h3>
+<p>Scrape only new data:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">incremental_scraper</span> <span class="kn">import</span> <span class="n">IncrementalGradCafeScraper</span>
+
+<span class="n">scraper</span> <span class="o">=</span> <span class="n">IncrementalGradCafeScraper</span><span class="p">(</span><span class="n">db_config</span><span class="o">=</span><span class="n">db_config</span><span class="p">)</span>
+<span class="n">new_data</span> <span class="o">=</span> <span class="n">scraper</span><span class="o">.</span><span class="n">scrape_new_data_only</span><span class="p">(</span><span class="n">max_pages</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<span class="n">scraper</span><span class="o">.</span><span class="n">save_new_data</span><span class="p">(</span><span class="n">new_data</span><span class="p">,</span> <span class="s2">&quot;new_data.json&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="flask-web-application">
+<h3>Flask Web Application<a class="headerlink" href="#flask-web-application" title="Link to this heading"></a></h3>
+<p>The Flask app provides a web interface with REST API endpoints:</p>
+<p><strong>Available Endpoints:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> - Main analysis page</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/analysis</span></code> - Alias for main page</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/pull-data</span></code> - Trigger data pull</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/update-analysis</span></code> - Update analysis</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/status</span></code> - Check operation status</p></li>
+</ul>
+<p><strong>Using the Web Interface:</strong></p>
+<ol class="arabic simple">
+<li><p>Navigate to <code class="docutils literal notranslate"><span class="pre">http://localhost:8080</span></code></p></li>
+<li><p>Click “Pull Data” to fetch latest data</p></li>
+<li><p>Click “Update Analysis” to refresh analytics</p></li>
+<li><p>View results in the dashboard</p></li>
+</ol>
+</section>
+</section>
+<section id="command-line-interface">
+<h2>Command Line Interface<a class="headerlink" href="#command-line-interface" title="Link to this heading"></a></h2>
+<p>All modules can be run from command line:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Full data pipeline</span>
+python<span class="w"> </span>src/scrape.py<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+python<span class="w"> </span>src/clean.py<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+python<span class="w"> </span>src/load_data.py<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+python<span class="w"> </span>src/query_data.py
+
+<span class="c1"># Incremental update</span>
+python<span class="w"> </span>src/incremental_scraper.py
+
+<span class="c1"># Start web server</span>
+python<span class="w"> </span>src/flask_app.py
+</pre></div>
+</div>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<section id="database-configuration">
+<h3>Database Configuration<a class="headerlink" href="#database-configuration" title="Link to this heading"></a></h3>
+<p>Edit database settings in each module:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">DB_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;host&#39;</span><span class="p">:</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;port&#39;</span><span class="p">:</span> <span class="mi">5432</span><span class="p">,</span>
+    <span class="s1">&#39;dbname&#39;</span><span class="p">:</span> <span class="s1">&#39;gradcafe_db&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="s1">&#39;your_user&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;password&#39;</span><span class="p">:</span> <span class="s1">&#39;your_password&#39;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="scraping-configuration">
+<h3>Scraping Configuration<a class="headerlink" href="#scraping-configuration" title="Link to this heading"></a></h3>
+<p>Adjust scraping parameters:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Maximum pages to scrape</span>
+<span class="n">MAX_PAGES</span> <span class="o">=</span> <span class="mi">100</span>
+
+<span class="c1"># Rate limiting (seconds between requests)</span>
+<span class="n">DELAY</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+<span class="c1"># User agent email</span>
+<span class="n">EMAIL</span> <span class="o">=</span> <span class="s2">&quot;your_email@example.com&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Rate Limiting</strong>: Always respect rate limits when scraping</p></li>
+<li><p><strong>Database Backups</strong>: Regularly backup your PostgreSQL database</p></li>
+<li><p><strong>Error Handling</strong>: Check logs for any errors during processing</p></li>
+<li><p><strong>Testing</strong>: Run tests after configuration changes</p></li>
+<li><p><strong>Documentation</strong>: Keep documentation updated with changes</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="architecture.html" class="btn btn-neutral float-right" title="Architecture Overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Wei Liu.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
