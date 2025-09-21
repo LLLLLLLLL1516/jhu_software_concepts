@@ -96,3 +96,17 @@
 2025-09-20 21:31:38,819 - ERROR - File not found: llm_extend_applicant_data.jsonl
 2025-09-20 21:31:38,819 - ERROR - Failed to load data. Exiting.
 2025-09-20 21:31:38,819 - INFO - Database connection closed
+2025-09-20 22:02:10,164 - INFO - Starting grad café data loading process
+2025-09-20 22:02:10,203 - INFO - Successfully connected to PostgreSQL database
+2025-09-20 22:02:10,204 - INFO - Table 'applicant_data' created or already exists
+2025-09-20 22:02:10,204 - INFO - Starting to load data from llm_extend_applicant_data.jsonl
+2025-09-20 22:02:10,204 - ERROR - File not found: llm_extend_applicant_data.jsonl
+2025-09-20 22:02:10,204 - ERROR - Failed to load data. Exiting.
+2025-09-20 22:02:10,204 - INFO - Database connection closed
+2025-09-20 22:06:58,626 - INFO - Starting grad café data loading process
+2025-09-20 22:06:58,665 - INFO - Successfully connected to PostgreSQL database
+2025-09-20 22:06:58,666 - INFO - Table 'applicant_data' created or already exists
+2025-09-20 22:06:58,666 - INFO - Starting to load data from llm_extend_applicant_data.jsonl
+2025-09-20 22:06:58,666 - ERROR - File not found: llm_extend_applicant_data.jsonl
+2025-09-20 22:06:58,666 - ERROR - Failed to load data. Exiting.
+2025-09-20 22:06:58,666 - INFO - Database connection closed

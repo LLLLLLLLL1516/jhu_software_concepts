@@ -214,6 +214,9 @@ def test_button_endpoints_without_json_body(client, mock_psycopg_connect):
     response = client.post('/pull-data')
     assert response.status_code == 202
     
+    # Reset status after pull-data (since it starts a background thread)
+    scraping_status['is_running'] = False
+    
     response = client.post('/update-analysis')
     assert response.status_code == 200
 
