@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+
+{% block title %}Grad Café Analysis Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-4 text-primary">
+                        <i class="fas fa-chart-line me-3"></i>
+                        Grad Café Data Analysis
+                    </h1>
+                    <p class="lead text-muted">
+                        Comprehensive analysis of graduate school admission data
+                    </p>
+                </div>
+                <div class="text-end">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-success btn-lg" id="pullDataBtn" data-testid="pull-data-btn" onclick="pullData()">
+                            <i class="fas fa-download me-2"></i>Pull Data
+                        </button>
+                        <button type="button" class="btn btn-primary btn-lg" id="updateAnalysisBtn" data-testid="update-analysis-btn" onclick="updateAnalysis()">
+                            <i class="fas fa-refresh me-2"></i>Update Analysis
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Info Section -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h5 class="card-title">
+                        <i class="fas fa-database text-primary"></i> Total Records
+                    </h5>
+                    <h2 class="text-primary">{{ "{:,}".format(total_records) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h5 class="card-title">
+                        <i class="fas fa-calendar text-success"></i> Latest Entry
+                    </h5>
+                    <h4 class="text-success">{{ latest_date or 'N/A' }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h5 class="card-title">
+                        <i class="fas fa-sync text-info"></i> Last Update
+                    </h5>
+                    <h6 class="text-info">
+                        {% if scraping_status.last_update %}
+                            {{ scraping_status.last_update.strftime('%Y-%m-%d %H:%M') }}
+                        {% else %}
+                            Never
+                        {% endif %}
+                    </h6>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Button Explanations -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="alert alert-info">
+                <h6><i class="fas fa-download me-2"></i><strong>Pull Data Button</strong></h6>
+                <p class="mb-0">Scrapes new admission data from GradCafe, cleans it, processes it with LLM standardization, and adds it to the database. This process may take several minutes.</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="alert alert-primary">
+                <h6><i class="fas fa-refresh me-2"></i><strong>Update Analysis Button</strong></h6>
+                <p class="mb-0">Refreshes the analysis results with the most current data in the database. Disabled while data pulling is in progress.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Query Results Section -->
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-chart-bar me-2"></i>Analysis Results
+            </h2>
+        </div>
+    </div>
+
+    <!-- Results Grid -->
+    <div class="row">
+        {% for key, data in results.items() %}
+        <div class="col-lg-6 col-xl-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-question-circle me-2"></i>
+                        Question {{ loop.index }}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="card-text"><strong>{{ data.description }}</strong></p>
+                    
+                    <div class="result-display p-3 bg-light rounded">
+                        {% if data.result is iterable and data.result is not string and data.result is not mapping %}
+                            {% if data.result|length == 4 %}
+                                <!-- Handle tuple results like average metrics -->
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <small class="text-muted">GPA</small>
+                                        <div class="h5 text-primary">{{ data.result[0] }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">GRE</small>
+                                        <div class="h5 text-primary">{{ data.result[1] }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">GRE V</small>
+                                        <div class="h5 text-primary">{{ data.result[2] }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">GRE AW</small>
+                                        <div class="h5 text-primary">{{ data.result[3] }}</div>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <h3 class="text-center text-primary mb-0">{{ data.result }}</h3>
+                            {% endif %}
+                        {% else %}
+                            <h3 class="text-center text-primary mb-0">
+                                {% if 'percentage' in data.description.lower() or 'percent' in data.description.lower() %}
+                                    {% if data.result is number %}
+                                        {{ "{:.2f}".format(data.result) }}%
+                                    {% else %}
+                                        {{ data.result }}%
+                                    {% endif %}
+                                {% else %}
+                                    {% if data.result is number %}
+                                        {{ "{:,}".format(data.result) }}
+                                    {% else %}
+                                        {{ data.result }}
+                                    {% endif %}
+                                {% endif %}
+                            </h3>
+                        {% endif %}
+                    </div>
+                    
+                    <details class="mt-3">
+                        <summary class="text-muted" style="cursor: pointer;">
+                            <small><i class="fas fa-code me-1"></i>View SQL Query</small>
+                        </summary>
+                        <pre class="mt-2 p-2 bg-dark text-light rounded small"><code>{{ data.query }}</code></pre>
+                    </details>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Status Display -->
+    {% if scraping_status.is_running %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border spinner-border-sm me-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div>
+                        <strong>Data Processing in Progress:</strong> {{ scraping_status.progress }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if scraping_status.error %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-danger">
+                <strong>Error:</strong> {{ scraping_status.error }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if scraping_status.is_running %}
+<script>
+// Auto-refresh status when scraping is running
+setTimeout(function() {
+    location.reload();
+}, 10000); // Refresh every 10 seconds
+</script>
+{% endif %}
+
+<script>
+
+function pullData() {
+    const btn = document.getElementById('pullDataBtn');
+    const updateBtn = document.getElementById('updateAnalysisBtn');
+    
+    // Disable buttons
+    btn.disabled = true;
+    updateBtn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+    
+    fetch('/pull-data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            if (response.status === 409) {
+                // System is busy
+                throw new Error('Data pulling is already in progress. Please wait for it to complete.');
+            }
+            throw new Error('Server error: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.ok) {
+            // Reload page
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            alert('Error: ' + (data.message || 'Unknown error occurred'));
+            // Re-enable buttons
+            btn.disabled = false;
+            updateBtn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-download me-2"></i>Pull Data';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert(error.message || 'An error occurred while starting data pull');
+        // Re-enable buttons
+        btn.disabled = false;
+        updateBtn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-download me-2"></i>Pull Data';
+    });
+}
+
+function updateAnalysis() {
+    const btn = document.getElementById('updateAnalysisBtn');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+    
+    fetch('/update-analysis', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            if (response.status === 409) {
+                // System is busy
+                throw new Error('Data pulling is in progress. Please wait for it to complete before updating analysis.');
+            }
+            throw new Error('Server error: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.ok) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Unknown error occurred'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-refresh me-2"></i>Update Analysis';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert(error.message || 'An error occurred while updating analysis');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-refresh me-2"></i>Update Analysis';
+    });
+}
+
+function showStatusModal() {
+    const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+    modal.show();
+}
+
+function pollStatus() {
+    fetch('/status')
+    .then(response => response.json())
+    .then(status => {
+        document.getElementById('statusMessage').textContent = status.progress || 'Processing...';
+        
+        if (status.is_running) {
+            // Continue polling
+            setTimeout(pollStatus, 2000);
+        } else {
+            // Process complete, reload page
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        }
+    })
+    .catch(error => {
+        console.error('Status polling error:', error);
+        setTimeout(pollStatus, 5000); // Retry after 5 seconds
+    });
+}
+</script>
+{% endblock %}

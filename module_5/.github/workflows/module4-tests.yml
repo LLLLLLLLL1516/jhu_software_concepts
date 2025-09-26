@@ -1,0 +1,58 @@
+name: Module 4 Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'module_4/**'
+      - '.github/workflows/module4-tests.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'module_4/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+          POSTGRES_DB: test_gradcafe
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    defaults:
+      run:
+        working-directory: module_4
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        pip install -r src/requirements.txt
+    
+    - name: Set PYTHONPATH
+      run: echo "PYTHONPATH=$GITHUB_WORKSPACE/module_4/src:$PYTHONPATH" >> $GITHUB_ENV
+    
+    - name: Run tests
+      env:
+        DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/test_gradcafe
+      run: |
+        pytest tests/ -v --cov=src --cov-report=term-missing

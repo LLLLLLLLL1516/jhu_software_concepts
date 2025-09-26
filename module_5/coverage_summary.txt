@@ -1,0 +1,15 @@
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.12.4-final-0 _______________
+
+Name                         Stmts   Miss    Cover   Missing
+------------------------------------------------------------
+src/clean.py                   169      0  100.00%
+src/flask_app.py               159      0  100.00%
+src/incremental_scraper.py     117      0  100.00%
+src/load_data.py               165      0  100.00%
+src/query_data.py               97      0  100.00%
+src/scrape.py                  308      0  100.00%
+------------------------------------------------------------
+TOTAL                         1015      0  100.00%
+Required test coverage of 100% reached. Total coverage: 100.00%
+229 passed in 24.43s

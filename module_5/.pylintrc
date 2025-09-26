@@ -1,0 +1,25 @@
+[MESSAGES CONTROL]
+# Disable duplicate-code for test files
+# This is acceptable because test files naturally share similar patterns:
+# - Mock configurations
+# - Test setup patterns
+# - Similar test data structures
+# - Consistent testing approaches
+disable=duplicate-code
+
+[MASTER]
+# Ignore test files for duplicate-code checking
+ignore-patterns=test_.*\.py
+
+[SIMILARITIES]
+# Minimum lines number of a similarity.
+min-similarity-lines=100
+
+# Ignore comments when computing similarities.
+ignore-comments=yes
+
+# Ignore docstrings when computing similarities.
+ignore-docstrings=yes
+
+# Ignore imports when computing similarities.
+ignore-imports=yes

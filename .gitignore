@@ -1,2 +1,18 @@
 module_2/module_2_Wei_Liu.zip
 *.zip
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+
+# macOS
+.DS_Store
+
+# IDE/editor
+.idea/
+.vscode/
