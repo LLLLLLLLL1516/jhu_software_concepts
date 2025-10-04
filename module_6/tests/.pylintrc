@@ -1,0 +1,7 @@
+[MESSAGES CONTROL]
+# Disable duplicate-code for test files
+# This is acceptable because test files naturally share similar patterns
+disable=duplicate-code
+
+[MASTER]
+# This .pylintrc only applies to the tests directory

@@ -1,0 +1,493 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>flask_app &mdash; GradCafe Data Analysis 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            GradCafe Data Analysis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Testing Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">GradCafe Data Analysis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">flask_app</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for flask_app</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Flask Web Application for Grad Café Data Analysis</span>
+<span class="sd">Displays query results and provides data update functionality</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">psycopg</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span><span class="p">,</span> <span class="n">render_template</span><span class="p">,</span> <span class="n">jsonify</span>
+
+<span class="c1"># Import our query analyzer</span>
+<span class="kn">from</span> <span class="nn">query_data</span> <span class="kn">import</span> <span class="n">GradCafeQueryAnalyzer</span>
+
+<span class="c1"># Default database configuration</span>
+<span class="n">DEFAULT_DB_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;host&#39;</span><span class="p">:</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;port&#39;</span><span class="p">:</span> <span class="mi">5432</span><span class="p">,</span>
+    <span class="s1">&#39;dbname&#39;</span><span class="p">:</span> <span class="s1">&#39;gradcafe_db&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="s1">&#39;momo&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;password&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span>
+<span class="p">}</span>
+
+<span class="c1"># Global variables for tracking operations</span>
+<span class="n">scraping_status</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;is_running&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s1">&#39;progress&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;last_update&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="kc">None</span>
+<span class="p">}</span>
+
+<div class="viewcode-block" id="create_app">
+<a class="viewcode-back" href="../modules.html#flask_app.create_app">[docs]</a>
+<span class="k">def</span> <span class="nf">create_app</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">db_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scraper</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Application factory function.</span>
+
+<span class="sd">    Creates and configures the Flask application, sets up database configuration,</span>
+<span class="sd">    and registers routes. Supports dependency injection of a scraper for testing.</span>
+
+<span class="sd">    :param config: Flask configuration dictionary to apply to the app.</span>
+<span class="sd">    :type config: dict | None</span>
+<span class="sd">    :param db_config: Database connection config (host, port, dbname, user, password).</span>
+<span class="sd">                      If not provided, uses ``DATABASE_URL`` or DEFAULT_DB_CONFIG.</span>
+<span class="sd">    :type db_config: dict | None</span>
+<span class="sd">    :param scraper: Optional scraper object with a ``scrape()`` method (for tests).</span>
+<span class="sd">    :type scraper: object | None</span>
+<span class="sd">    :return: Configured Flask application instance.</span>
+<span class="sd">    :rtype: Flask</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+    
+    <span class="c1"># Apply configuration</span>
+    <span class="k">if</span> <span class="n">config</span><span class="p">:</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    
+    <span class="c1"># Set up database configuration</span>
+    <span class="k">if</span> <span class="n">db_config</span><span class="p">:</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">db_config</span> <span class="o">=</span> <span class="n">db_config</span>
+    <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;DATABASE_URL&#39;</span><span class="p">):</span>
+        <span class="c1"># Parse DATABASE_URL for testing</span>
+        <span class="kn">import</span> <span class="nn">urllib.parse</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">parse</span><span class="o">.</span><span class="n">urlparse</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;DATABASE_URL&#39;</span><span class="p">))</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">db_config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;host&#39;</span><span class="p">:</span> <span class="n">url</span><span class="o">.</span><span class="n">hostname</span><span class="p">,</span>
+            <span class="s1">&#39;port&#39;</span><span class="p">:</span> <span class="n">url</span><span class="o">.</span><span class="n">port</span> <span class="ow">or</span> <span class="mi">5432</span><span class="p">,</span>
+            <span class="s1">&#39;dbname&#39;</span><span class="p">:</span> <span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span>  <span class="c1"># Remove leading slash</span>
+            <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="n">url</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+            <span class="s1">&#39;password&#39;</span><span class="p">:</span> <span class="n">url</span><span class="o">.</span><span class="n">password</span> <span class="ow">or</span> <span class="s1">&#39;&#39;</span>
+        <span class="p">}</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">db_config</span> <span class="o">=</span> <span class="n">DEFAULT_DB_CONFIG</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    
+    <span class="c1"># Set up scraper (for dependency injection in tests)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">scraper</span> <span class="o">=</span> <span class="n">scraper</span>
+
+    <span class="k">def</span> <span class="nf">get_db_connection</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a new database connection using app configuration.</span>
+
+<span class="sd">        :return: A new psycopg connection object or None on error.</span>
+<span class="sd">        :rtype: psycopg.Connection | None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">conn</span> <span class="o">=</span> <span class="n">psycopg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="o">**</span><span class="n">app</span><span class="o">.</span><span class="n">db_config</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">conn</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Database connection error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">run_data_pipeline</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run the complete data pipeline (scrape → clean → LLM → load).</span>
+
+<span class="sd">        If a scraper object is injected (for testing), it will be used and the pipeline</span>
+<span class="sd">        will short-circuit after the scraper step. Otherwise, this function calls</span>
+<span class="sd">        local scripts via subprocess in sequence:</span>
+<span class="sd">          1) incremental_scraper.py</span>
+<span class="sd">          2) clean.py</span>
+<span class="sd">          3) llm_hosting/app.py (LLM standardization)</span>
+<span class="sd">          4) load_new_data_to_database(...)</span>
+
+<span class="sd">        Updates the global ``scraping_status`` with progress, errors, and completion time.</span>
+
+<span class="sd">        :return: None</span>
+<span class="sd">        :rtype: None</span>
+<span class="sd">        :raises Exception: If any pipeline step fails, the error is recorded in status and re-raised internally.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">global</span> <span class="n">scraping_status</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[DEBUG] Starting data pipeline in thread </span><span class="si">{</span><span class="n">threading</span><span class="o">.</span><span class="n">current_thread</span><span class="p">()</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;is_running&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;error&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Starting data pipeline...&#39;</span>
+            
+            <span class="c1"># Use injected scraper if available (for testing)</span>
+            <span class="k">if</span> <span class="n">app</span><span class="o">.</span><span class="n">scraper</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[DEBUG] Using injected scraper&quot;</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">scraper</span><span class="o">.</span><span class="n">scrape</span><span class="p">()</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[DEBUG] Scraper completed: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Complete! Test data loaded&#39;</span>
+                    <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;last_update&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[DEBUG] Scraper failed with exception: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">raise</span> <span class="n">e</span>  <span class="c1"># Re-raise to be caught by outer try/except</span>
+                <span class="k">return</span>
+            
+            <span class="c1"># Get the correct working directory (where flask_app.py is located)</span>
+            <span class="n">base_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[DEBUG] Base directory: </span><span class="si">{</span><span class="n">base_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="c1"># Step 1: Incremental scraping</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Step 1/4: Scraping new data...&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[DEBUG] Running incremental_scraper.py...&quot;</span><span class="p">)</span>
+            
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s1">&#39;python&#39;</span><span class="p">,</span> <span class="s1">&#39;incremental_scraper.py&#39;</span><span class="p">],</span> 
+                                  <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">base_dir</span><span class="p">)</span>
+            
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[DEBUG] Scraper return code: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">returncode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[DEBUG] Scraper stdout: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[DEBUG] Scraper stderr: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scraping failed: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="c1"># Check if new data was found</span>
+            <span class="k">if</span> <span class="s2">&quot;No new data found&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span> <span class="ow">or</span> <span class="s2">&quot;No new data&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="p">:</span>
+                <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;No new data available&#39;</span>
+                <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;is_running&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;last_update&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[DEBUG] No new data found, ending pipeline&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+            
+            <span class="c1"># Step 2: Clean new data</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Step 2/4: Cleaning new data...&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[DEBUG] Running clean.py...&quot;</span><span class="p">)</span>
+            
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s1">&#39;python&#39;</span><span class="p">,</span> <span class="s1">&#39;clean.py&#39;</span><span class="p">,</span> <span class="s1">&#39;--input&#39;</span><span class="p">,</span> <span class="s1">&#39;new_applicant_data.json&#39;</span><span class="p">,</span> 
+                                   <span class="s1">&#39;--output&#39;</span><span class="p">,</span> <span class="s1">&#39;new_cleaned_applicant_data.json&#39;</span><span class="p">],</span> 
+                                  <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">base_dir</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cleaning failed: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="c1"># Step 3: LLM standardization</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Step 3/4: LLM standardization...&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[DEBUG] Running LLM standardization...&quot;</span><span class="p">)</span>
+            
+            <span class="n">llm_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span> <span class="s1">&#39;llm_hosting&#39;</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s1">&#39;python&#39;</span><span class="p">,</span> <span class="s1">&#39;app.py&#39;</span><span class="p">,</span> <span class="s1">&#39;--file&#39;</span><span class="p">,</span> <span class="s1">&#39;../new_cleaned_applicant_data.json&#39;</span><span class="p">,</span> 
+                                   <span class="s1">&#39;--stdout&#39;</span><span class="p">],</span> 
+                                  <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">llm_dir</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LLM processing failed: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="c1"># Save LLM output</span>
+            <span class="n">llm_output_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span> <span class="s1">&#39;new_llm_extend_applicant_data.jsonl&#39;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">llm_output_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+            
+            <span class="c1"># Step 4: Load new data into database</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Step 4/4: Loading new data into database...&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[DEBUG] Loading data to database...&quot;</span><span class="p">)</span>
+            
+            <span class="c1"># Load and append new data to database</span>
+            <span class="n">new_count</span> <span class="o">=</span> <span class="n">load_new_data_to_database</span><span class="p">(</span><span class="n">llm_output_path</span><span class="p">)</span>
+            
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;Complete! Added </span><span class="si">{</span><span class="n">new_count</span><span class="si">}</span><span class="s1"> new records&#39;</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;last_update&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[DEBUG] Pipeline complete! Added </span><span class="si">{</span><span class="n">new_count</span><span class="si">}</span><span class="s2"> new records&quot;</span><span class="p">)</span>
+            
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[DEBUG] Pipeline error: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="kn">import</span> <span class="nn">traceback</span>
+            <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;error&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;Error: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
+        
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;is_running&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[DEBUG] Data pipeline thread finished&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">load_new_data_to_database</span><span class="p">(</span><span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load new data from a JSONL file into the database.</span>
+
+<span class="sd">        Uses :class:`load_data.GradCafeDataLoader` to load rows and computes the</span>
+<span class="sd">        number of newly added records by comparing counts before/after.</span>
+
+<span class="sd">        :param filename: Path to the JSONL file produced by the LLM step.</span>
+<span class="sd">        :type filename: str</span>
+<span class="sd">        :return: Number of new rows added to ``applicant_data``.</span>
+<span class="sd">        :rtype: int</span>
+<span class="sd">        :raises Exception: If database connection or loading fails.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Import the data loader functionality</span>
+            <span class="kn">from</span> <span class="nn">load_data</span> <span class="kn">import</span> <span class="n">GradCafeDataLoader</span>
+            
+            <span class="n">loader</span> <span class="o">=</span> <span class="n">GradCafeDataLoader</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">db_config</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">loader</span><span class="o">.</span><span class="n">connect_to_database</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Failed to connect to database&quot;</span><span class="p">)</span>
+            
+            <span class="c1"># Count existing records</span>
+            <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+            <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+                <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM applicant_data&quot;</span><span class="p">)</span>
+                <span class="n">initial_count</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            
+            <span class="c1"># Load new data</span>
+            <span class="n">success</span> <span class="o">=</span> <span class="n">loader</span><span class="o">.</span><span class="n">load_data_from_jsonl</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">success</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Failed to load new data&quot;</span><span class="p">)</span>
+            
+            <span class="c1"># Count final records</span>
+            <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+            <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+                <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM applicant_data&quot;</span><span class="p">)</span>
+                <span class="n">final_count</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            
+            <span class="n">loader</span><span class="o">.</span><span class="n">close_connection</span><span class="p">()</span>
+            
+            <span class="k">return</span> <span class="n">final_count</span> <span class="o">-</span> <span class="n">initial_count</span>
+            
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Database loading error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+    <span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/analysis&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">index</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Render the main analysis page.</span>
+
+<span class="sd">        Connects to the database, executes analysis queries via</span>
+<span class="sd">        :class:`query_data.GradCafeQueryAnalyzer`, fetches basic DB stats, and</span>
+<span class="sd">        renders the ``index.html`` template with results.</span>
+
+<span class="sd">        :return: Rendered HTML for the analysis page.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Get all query results</span>
+            <span class="n">analyzer</span> <span class="o">=</span> <span class="n">GradCafeQueryAnalyzer</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">db_config</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">connect_to_database</span><span class="p">():</span>
+                <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;error.html&#39;</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s2">&quot;Failed to connect to database&quot;</span><span class="p">)</span>
+            
+            <span class="c1"># Run all queries</span>
+            <span class="n">analyzer</span><span class="o">.</span><span class="n">run_all_queries</span><span class="p">()</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">results</span>
+            <span class="n">analyzer</span><span class="o">.</span><span class="n">close_connection</span><span class="p">()</span>
+            
+            <span class="c1"># Get database stats</span>
+            <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">conn</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+                    <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM applicant_data&quot;</span><span class="p">)</span>
+                    <span class="n">total_records</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+                    
+                    <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT MAX(date_added) FROM applicant_data&quot;</span><span class="p">)</span>
+                    <span class="n">latest_date</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">total_records</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">latest_date</span> <span class="o">=</span> <span class="kc">None</span>
+            
+            <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;index.html&#39;</span><span class="p">,</span> 
+                                 <span class="n">results</span><span class="o">=</span><span class="n">results</span><span class="p">,</span> 
+                                 <span class="n">total_records</span><span class="o">=</span><span class="n">total_records</span><span class="p">,</span>
+                                 <span class="n">latest_date</span><span class="o">=</span><span class="n">latest_date</span><span class="p">,</span>
+                                 <span class="n">scraping_status</span><span class="o">=</span><span class="n">scraping_status</span><span class="p">)</span>
+            
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;error.html&#39;</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/pull-data&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+    <span class="k">def</span> <span class="nf">pull_data</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Trigger the background data pipeline (scrape → clean → LLM → load).</span>
+
+<span class="sd">        If a pipeline is already running, responds with HTTP 409 and</span>
+<span class="sd">        ``{&quot;busy&quot;: true}``. Otherwise, starts a background thread and returns</span>
+<span class="sd">        HTTP 202 with ``{&quot;ok&quot;: true}``.</span>
+
+<span class="sd">        :return: JSON status and HTTP status code.</span>
+<span class="sd">        :rtype: flask.Response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">global</span> <span class="n">scraping_status</span>
+        
+        <span class="k">if</span> <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;is_running&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s1">&#39;busy&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span> <span class="mi">409</span>
+        
+        <span class="c1"># Start data pipeline in background thread</span>
+        <span class="n">thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">run_data_pipeline</span><span class="p">)</span>
+        <span class="n">thread</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        
+        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s1">&#39;ok&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span> <span class="mi">202</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/update-analysis&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+    <span class="k">def</span> <span class="nf">update_analysis</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Refresh analysis results (fast path).</span>
+
+<span class="sd">        If the data pipeline is currently running, responds with HTTP 409 and</span>
+<span class="sd">        ``{&quot;busy&quot;: true}``. Otherwise, returns 200 with ``{&quot;ok&quot;: true}``.</span>
+<span class="sd">        This endpoint is intended for lightweight refresh of cached analysis.</span>
+
+<span class="sd">        :return: JSON status and HTTP status code.</span>
+<span class="sd">        :rtype: flask.Response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">global</span> <span class="n">scraping_status</span>
+        
+        <span class="k">if</span> <span class="n">scraping_status</span><span class="p">[</span><span class="s1">&#39;is_running&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s1">&#39;busy&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span> <span class="mi">409</span>
+        
+        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s1">&#39;ok&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span> <span class="mi">200</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/status&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">get_status</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return current scraping status as JSON.</span>
+
+<span class="sd">        :return: Dictionary with keys: ``is_running``, ``progress``,</span>
+<span class="sd">                 ``last_update``, ``error``.</span>
+<span class="sd">        :rtype: flask.Response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">jsonify</span><span class="p">(</span><span class="n">scraping_status</span><span class="p">)</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">errorhandler</span><span class="p">(</span><span class="mi">404</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">not_found</span><span class="p">(</span><span class="n">error</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle 404 Not Found errors.</span>
+
+<span class="sd">        :param error: Flask error object.</span>
+<span class="sd">        :type error: Exception</span>
+<span class="sd">        :return: Rendered error page and HTTP 404.</span>
+<span class="sd">        :rtype: tuple[str, int]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;error.html&#39;</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s2">&quot;Page not found&quot;</span><span class="p">),</span> <span class="mi">404</span>
+
+    <span class="nd">@app</span><span class="o">.</span><span class="n">errorhandler</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">internal_error</span><span class="p">(</span><span class="n">error</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle 500 Internal Server Error.</span>
+
+<span class="sd">        :param error: Flask error object.</span>
+<span class="sd">        :type error: Exception</span>
+<span class="sd">        :return: Rendered error page and HTTP 500.</span>
+<span class="sd">        :rtype: tuple[str, int]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;error.html&#39;</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s2">&quot;Internal server error&quot;</span><span class="p">),</span> <span class="mi">500</span>
+    
+    <span class="k">return</span> <span class="n">app</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">()</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Wei Liu.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
